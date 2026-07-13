@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>滷味店營運後台</title>
+  <script src="https://www.gstatic.com/charts/loader.js"></script>
+  <style>
+    :root{
+      --bg:#f3f4f6;
+      --surface:#ffffff;
+      --text:#172033;
+      --muted:#657084;
+      --border:#dfe3e8;
+      --green:#16805b;
+      --green-soft:#e8f5ef;
+      --blue:#2563a8;
+      --blue-soft:#eaf2fb;
+      --amber:#b96812;
+      --amber-soft:#fff3df;
+      --red:#b84040;
+      --red-soft:#fbeaea;
+      --shadow:0 1px 3px rgba(23,32,51,0.08);
+    }
+
+    *{
+      box-sizing:border-box;
+    }
+
+    body{
+      margin:0;
+      color:var(--text);
+      background:var(--bg);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+      letter-spacing:0;
+    }
+
+    button,
+    a{
+      font:inherit;
+    }
+
+    .topbar{
+      position:sticky;
+      top:0;
+      z-index:20;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:20px;
+      min-height:68px;
+      padding:12px 24px;
+      background:var(--surface);
+      border-bottom:1px solid var(--border);
+    }
+
+    .brand{
+      min-width:0;
+    }
+
+    .brand h1{
+      margin:0;
+      font-size:20px;
+      line-height:1.3;
+    }
+
+    .brand p{
+      margin:3px 0 0;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .actions{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-shrink:0;
+    }
+
+    .btn{
+      min-height:40px;
+      padding:8px 14px;
+      border:1px solid var(--border);
+      border-radius:6px;
+      color:var(--text);
+      background:var(--surface);
+      cursor:pointer;
+      text-decoration:none;
+      font-weight:650;
+    }
+
+    .btn:hover{
+      background:#f8fafc;
+      border-color:#bdc5cf;
+    }
+
+    .btn.primary{
+      color:#fff;
+      background:var(--green);
+      border-color:var(--green);
+    }
+
+    .btn:disabled{
+      cursor:wait;
+      opacity:0.6;
+    }
+
+    .btn.disabled{
+      pointer-events:none;
+      opacity:0.55;
+    }
+
+    main{
+      width:min(1440px,100%);
+      margin:0 auto;
+      padding:24px;
+    }
+
+    .section-heading{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:16px;
+      margin:0 0 12px;
+    }
+
+    .section-heading h2{
+      margin:0;
+      font-size:17px;
+    }
+
+    .section-heading span{
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .metric-grid{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:12px;
+      margin-bottom:24px;
+    }
+
+    .metric{
+      min-width:0;
+      min-height:126px;
+      padding:18px;
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:8px;
+      box-shadow:var(--shadow);
+    }
+
+    .metric-label{
+      color:var(--muted);
+      font-size:13px;
+      font-weight:650;
+    }
+
+    .metric-value{
+      margin-top:12px;
+      font-size:30px;
+      line-height:1.1;
+      font-weight:760;
+      overflow-wrap:anywhere;
+    }
+
+    .metric-note{
+      margin-top:9px;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .metric.green{
+      border-top:4px solid var(--green);
+    }
+
+    .metric.blue{
+      border-top:4px solid var(--blue);
+    }
+
+    .metric.amber{
+      border-top:4px solid var(--amber);
+    }
+
+    .metric.red{
+      border-top:4px solid var(--red);
+    }
+
+    .dashboard-grid{
+      display:grid;
+      grid-template-columns:minmax(0,2fr) minmax(300px,1fr);
+      gap:16px;
+      margin-bottom:24px;
+    }
+
+    .panel{
+      min-width:0;
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:8px;
+      box-shadow:var(--shadow);
+    }
+
+    .panel-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      min-height:54px;
+      padding:14px 18px;
+      border-bottom:1px solid var(--border);
+    }
+
+    .panel-header h2{
+      margin:0;
+      font-size:16px;
+    }
+
+    .panel-header span{
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .chart{
+      width:100%;
+      height:330px;
+      padding:6px;
+    }
+
+    .status-chart{
+      height:260px;
+    }
+
+    .status-summary{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:8px;
+      padding:0 18px 18px;
+    }
+
+    .status-chip{
+      padding:10px 12px;
+      border-radius:6px;
+      font-size:13px;
+      font-weight:700;
+    }
+
+    .status-chip.pending{
+      color:var(--amber);
+      background:var(--amber-soft);
+    }
+
+    .status-chip.completed{
+      color:var(--green);
+      background:var(--green-soft);
+    }
+
+    .lower-grid{
+      display:grid;
+      grid-template-columns:minmax(320px,0.9fr) minmax(0,1.6fr);
+      gap:16px;
+    }
+
+    .ranking{
+      padding:14px 18px 18px;
+    }
+
+    .rank-row{
+      display:grid;
+      grid-template-columns:30px minmax(80px,1fr) minmax(100px,1.4fr) auto;
+      align-items:center;
+      gap:10px;
+      min-height:42px;
+      font-size:14px;
+    }
+
+    .rank-number{
+      color:var(--muted);
+      font-weight:700;
+    }
+
+    .rank-name{
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      font-weight:650;
+    }
+
+    .bar-track{
+      height:8px;
+      overflow:hidden;
+      border-radius:4px;
+      background:#e8ebef;
+    }
+
+    .bar-fill{
+      height:100%;
+      background:var(--blue);
+      border-radius:4px;
+      transition:width 240ms ease;
+    }
+
+    .rank-value{
+      min-width:55px;
+      text-align:right;
+      font-variant-numeric:tabular-nums;
+    }
+
+    .table-wrap{
+      overflow:auto;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:14px;
+    }
+
+    th,
+    td{
+      padding:12px 14px;
+      border-bottom:1px solid var(--border);
+      text-align:left;
+      white-space:nowrap;
+    }
+
+    th{
+      color:var(--muted);
+      background:#fafbfc;
+      font-size:12px;
+      font-weight:700;
+    }
+
+    td.amount,
+    th.amount{
+      text-align:right;
+      font-variant-numeric:tabular-nums;
+    }
+
+    tbody tr:last-child td{
+      border-bottom:0;
+    }
+
+    .badge{
+      display:inline-block;
+      min-width:58px;
+      padding:4px 8px;
+      border-radius:4px;
+      text-align:center;
+      font-size:12px;
+      font-weight:700;
+    }
+
+    .badge.pending{
+      color:var(--amber);
+      background:var(--amber-soft);
+    }
+
+    .badge.completed{
+      color:var(--green);
+      background:var(--green-soft);
+    }
+
+    .price-warning{
+      color:var(--red);
+      font-size:12px;
+      font-weight:700;
+    }
+
+    .empty{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:150px;
+      padding:24px;
+      color:var(--muted);
+      text-align:center;
+    }
+
+    .loading{
+      position:fixed;
+      inset:0;
+      z-index:50;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background:rgba(255,255,255,0.72);
+    }
+
+    .loading.active{
+      display:flex;
+    }
+
+    .loading-box{
+      padding:16px 20px;
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:8px;
+      box-shadow:0 8px 24px rgba(23,32,51,0.16);
+      font-weight:700;
+    }
+
+    .error-banner{
+      display:none;
+      margin-bottom:16px;
+      padding:12px 14px;
+      color:var(--red);
+      background:var(--red-soft);
+      border:1px solid #efbcbc;
+      border-radius:6px;
+    }
+
+    @media (max-width:980px){
+      .metric-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .dashboard-grid,
+      .lower-grid{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media (max-width:620px){
+      .topbar{
+        align-items:flex-start;
+        padding:12px 14px;
+      }
+
+      .brand p{
+        display:none;
+      }
+
+      .actions{
+        flex-wrap:wrap;
+        justify-content:flex-end;
+      }
+
+      .btn{
+        min-height:38px;
+        padding:7px 10px;
+        font-size:13px;
+      }
+
+      main{
+        padding:16px 12px 28px;
+      }
+
+      .metric-grid{
+        gap:8px;
+      }
+
+      .metric{
+        min-height:112px;
+        padding:14px;
+      }
+
+      .metric-value{
+        font-size:24px;
+      }
+
+      .chart{
+        height:280px;
+      }
+
+      .rank-row{
+        grid-template-columns:24px minmax(80px,1fr) auto;
+      }
+
+      .bar-track{
+        display:none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>營運後台</h1>
+      <p id="updatedAt">正在讀取最新資料</p>
+    </div>
+    <div class="actions">
+      <a id="menuLink" class="btn disabled" href="#" aria-disabled="true">缺貨管理</a>
+      <button id="refreshBtn" class="btn primary" type="button" onclick="loadDashboard(true)">
+        重新整理
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <div id="errorBanner" class="error-banner" role="alert"></div>
+
+    <div class="section-heading">
+      <h2>今日營運</h2>
+      <span id="todayLabel"></span>
+    </div>
+    <section class="metric-grid" aria-label="今日營運指標">
+      <article class="metric green">
+        <div class="metric-label">今日營收</div>
+        <div id="todayRevenue" class="metric-value">$0</div>
+        <div id="todayAverage" class="metric-note">平均客單 $0</div>
+      </article>
+      <article class="metric blue">
+        <div class="metric-label">今日訂單</div>
+        <div id="todayOrders" class="metric-value">0</div>
+        <div id="todayCompletion" class="metric-note">完成率 0%</div>
+      </article>
+      <article class="metric amber">
+        <div class="metric-label">待製作</div>
+        <div id="pendingOrders" class="metric-value">0</div>
+        <div class="metric-note">目前尚未完成</div>
+      </article>
+      <article class="metric red">
+        <div class="metric-label">本月營收</div>
+        <div id="monthRevenue" class="metric-value">$0</div>
+        <div id="monthOrders" class="metric-note">本月 0 筆訂單</div>
+      </article>
+    </section>
+
+    <section class="dashboard-grid">
+      <article class="panel">
+        <div class="panel-header">
+          <h2>本月營收與訂單趨勢</h2>
+          <span id="monthLabel"></span>
+        </div>
+        <div id="trendChart" class="chart" aria-label="本月營收與訂單趨勢圖"></div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <h2>今日訂單狀態</h2>
+          <span>即時概況</span>
+        </div>
+        <div id="statusChart" class="chart status-chart" aria-label="今日訂單狀態圖"></div>
+        <div class="status-summary">
+          <div id="pendingSummary" class="status-chip pending">待製作 0</div>
+          <div id="completedSummary" class="status-chip completed">已完成 0</div>
+        </div>
+      </article>
+    </section>
+
+    <section class="lower-grid">
+      <article class="panel">
+        <div class="panel-header">
+          <h2>本月熱銷品項</h2>
+          <span>依銷售數量</span>
+        </div>
+        <div id="ranking" class="ranking"></div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <h2>今日最近訂單</h2>
+          <span>最近 10 筆</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>時間</th>
+                <th>單號</th>
+                <th>顧客</th>
+                <th>取餐</th>
+                <th>狀態</th>
+                <th class="amount">金額</th>
+              </tr>
+            </thead>
+            <tbody id="recentOrders"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <div id="loading" class="loading" aria-live="polite">
+    <div class="loading-box">同步營運資料中...</div>
+  </div>
+
+  <script>
+    let chartsReady = false;
+    let latestData = null;
+    let resizeTimer = null;
+
+    google.charts.load("current", {
+      packages:["corechart"]
+    });
+
+    google.charts.setOnLoadCallback(function(){
+      chartsReady = true;
+      if(latestData){
+        drawCharts(latestData);
+      }
+    });
+
+    function formatCurrency(value){
+      return "$" + Number(value || 0).toLocaleString("zh-TW");
+    }
+
+    function escapeHtml(value){
+      return String(value == null ? "" : value)
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+    }
+
+    function setLoading(isLoading){
+      document.getElementById("loading")
+        .classList.toggle("active",isLoading);
+      document.getElementById("refreshBtn")
+        .disabled = isLoading;
+    }
+
+    function showError(message){
+      const banner = document.getElementById("errorBanner");
+      banner.textContent = "資料讀取失敗：" + message;
+      banner.style.display = "block";
+    }
+
+    function loadDashboard(showOverlay){
+      if(showOverlay){
+        setLoading(true);
+      }
+
+      document.getElementById("errorBanner")
+        .style.display = "none";
+
+      google.script.run
+        .withSuccessHandler(function(data){
+          latestData = data;
+          renderDashboard(data);
+          setLoading(false);
+        })
+        .withFailureHandler(function(error){
+          setLoading(false);
+          showError(error && error.message ? error.message : "未知錯誤");
+        })
+        .getAdminDashboardData();
+    }
+
+    function initializeMenuLink(){
+      google.script.run
+        .withSuccessHandler(function(url){
+          if(!url){
+            showError("無法取得 Apps Script 部署網址");
+            return;
+          }
+
+          const link = document.getElementById("menuLink");
+          link.href = url + "?page=menu";
+          link.classList.remove("disabled");
+          link.setAttribute("aria-disabled","false");
+        })
+        .withFailureHandler(function(error){
+          showError(
+            error && error.message
+              ? error.message
+              : "無法建立缺貨管理連結"
+          );
+        })
+        .getWebAppUrl();
+    }
+
+    function renderDashboard(data){
+      document.getElementById("updatedAt").textContent =
+        "資料更新時間 " + data.generatedAt;
+      document.getElementById("todayLabel").textContent = data.todayLabel;
+      document.getElementById("monthLabel").textContent = data.monthLabel;
+      document.getElementById("todayRevenue").textContent =
+        formatCurrency(data.today.revenue);
+      document.getElementById("todayAverage").textContent =
+        "平均客單 " + formatCurrency(data.today.average);
+      document.getElementById("todayOrders").textContent = data.today.orders;
+      document.getElementById("todayCompletion").textContent =
+        "完成率 " + data.today.completionRate + "%";
+      document.getElementById("pendingOrders").textContent = data.today.pending;
+      document.getElementById("monthRevenue").textContent =
+        formatCurrency(data.month.revenue);
+      document.getElementById("monthOrders").textContent =
+        "本月 " + data.month.orders + " 筆訂單，平均 " +
+        formatCurrency(data.month.average);
+      document.getElementById("pendingSummary").textContent =
+        "待製作 " + data.today.pending;
+      document.getElementById("completedSummary").textContent =
+        "已完成 " + data.today.completed;
+
+      renderRanking(data.topItems);
+      renderRecentOrders(data.recentOrders);
+
+      if(chartsReady){
+        drawCharts(data);
+      }
+    }
+
+    function renderRanking(items){
+      const container = document.getElementById("ranking");
+
+      if(!items.length){
+        container.innerHTML = '<div class="empty">本月尚無銷售資料</div>';
+        return;
+      }
+
+      const maxQuantity = Math.max.apply(null,items.map(item => item.quantity));
+
+      container.innerHTML = items.map(function(item,index){
+        const width = maxQuantity ? item.quantity / maxQuantity * 100 : 0;
+        return `
+          <div class="rank-row">
+            <div class="rank-number">${index + 1}</div>
+            <div class="rank-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
+            <div class="rank-value">${item.quantity} 份</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderRecentOrders(orders){
+      const tbody = document.getElementById("recentOrders");
+
+      if(!orders.length){
+        tbody.innerHTML = '<tr><td colspan="6"><div class="empty">今日尚無訂單</div></td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = orders.map(function(order){
+        const completed = order.status === "已完成";
+        const amount = order.priceMissing
+          ? '<span class="price-warning">價格未完整</span>'
+          : formatCurrency(order.total);
+
+        return `
+          <tr>
+            <td>${escapeHtml(order.time)}</td>
+            <td><strong>${escapeHtml(order.orderId)}</strong></td>
+            <td>${escapeHtml(order.customer)}</td>
+            <td>${escapeHtml(order.pickup || "-")}</td>
+            <td><span class="badge ${completed ? "completed" : "pending"}">${escapeHtml(order.status)}</span></td>
+            <td class="amount">${amount}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function drawCharts(data){
+      drawTrendChart(data.daily);
+      drawStatusChart(data.today);
+    }
+
+    function drawTrendChart(daily){
+      const rows = [["日期","營收","訂單"]].concat(
+        daily.map(item => [item.label,item.revenue,item.orders])
+      );
+
+      const chartData = google.visualization.arrayToDataTable(rows);
+      const chart = new google.visualization.ComboChart(
+        document.getElementById("trendChart")
+      );
+
+      chart.draw(chartData,{
+        backgroundColor:"transparent",
+        chartArea:{left:66,top:28,width:"78%",height:"68%"},
+        colors:["#16805b","#2563a8"],
+        fontName:"Arial",
+        legend:{position:"top",alignment:"end",textStyle:{color:"#657084",fontSize:12}},
+        hAxis:{textStyle:{color:"#657084",fontSize:11},gridlines:{color:"transparent"}},
+        vAxes:{
+          0:{format:"$#,###",textStyle:{color:"#657084",fontSize:11},gridlines:{color:"#e7e9ed"},minValue:0},
+          1:{format:"0",textStyle:{color:"#657084",fontSize:11},gridlines:{color:"transparent"},minValue:0}
+        },
+        seriesType:"bars",
+        series:{
+          0:{targetAxisIndex:0},
+          1:{type:"line",targetAxisIndex:1,lineWidth:3,pointSize:4}
+        },
+        bar:{groupWidth:"58%"},
+        tooltip:{textStyle:{fontSize:13}}
+      });
+    }
+
+    function drawStatusChart(today){
+      const container = document.getElementById("statusChart");
+
+      if(!today.orders){
+        container.innerHTML = '<div class="empty">今日尚無訂單</div>';
+        return;
+      }
+
+      const chartData = google.visualization.arrayToDataTable([
+        ["狀態","訂單數"],
+        ["待製作",today.pending],
+        ["已完成",today.completed]
+      ]);
+
+      const chart = new google.visualization.PieChart(container);
+      chart.draw(chartData,{
+        backgroundColor:"transparent",
+        chartArea:{left:12,top:12,width:"92%",height:"88%"},
+        colors:["#d8892d","#16805b"],
+        pieHole:0.62,
+        pieSliceText:"value",
+        pieSliceTextStyle:{color:"#ffffff",fontSize:13},
+        legend:{position:"none"},
+        tooltip:{textStyle:{fontSize:13}}
+      });
+    }
+
+    window.addEventListener("resize",function(){
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function(){
+        if(latestData && chartsReady){
+          drawCharts(latestData);
+        }
+      },180);
+    });
+
+    initializeMenuLink();
+    loadDashboard(true);
+    setInterval(function(){
+      loadDashboard(false);
+    },60000);
+  </script>
+</body>
+</html>

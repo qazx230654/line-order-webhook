@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body{
+      margin:0;
+      padding:16px;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:#f5f5f5;
+    }
+
+    .header{
+      margin-bottom:16px;
+    }
+
+    .title{
+      font-size:24px;
+      font-weight:700;
+      margin-bottom:6px;
+    }
+
+    .subtitle{
+      color:#666;
+      font-size:14px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:12px;
+    }
+
+    .card{
+      background:#fff;
+      border-radius:14px;
+      overflow:hidden;
+      box-shadow:0 2px 8px rgba(0,0,0,0.08);
+      border:2px solid transparent;
+    }
+
+    .card.sold-out{
+      opacity:0.55;
+      border-color:#d9534f;
+    }
+
+    .image-wrap{
+      width:100%;
+      aspect-ratio:1 / 1;
+      background:#eee;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+
+    .image-wrap img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
+
+    .no-image{
+      color:#aaa;
+      font-size:14px;
+    }
+
+    .content{
+      padding:12px;
+    }
+
+    .name{
+      font-size:16px;
+      font-weight:700;
+      margin-bottom:4px;
+    }
+
+    .price{
+      color:#555;
+      font-size:14px;
+      margin-bottom:10px;
+    }
+
+    .btn{
+      width:100%;
+      border:0;
+      border-radius:10px;
+      padding:10px;
+      font-size:15px;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    .btn:disabled{
+      cursor:wait;
+      opacity:0.72;
+    }
+
+    .notice{
+      display:none;
+      position:fixed;
+      left:50%;
+      bottom:20px;
+      z-index:10;
+      width:min(420px,calc(100% - 32px));
+      padding:12px 16px;
+      border-radius:8px;
+      color:#8b1e1e;
+      background:#fdeaea;
+      border:1px solid #efb4b4;
+      box-shadow:0 4px 16px rgba(0,0,0,0.14);
+      transform:translateX(-50%);
+      font-size:14px;
+      font-weight:700;
+    }
+
+    .available-btn{
+      background:#e8f7ee;
+      color:#16803c;
+    }
+
+    .soldout-btn{
+      background:#fdeaea;
+      color:#c9302c;
+    }
+
+    @media (min-width:768px){
+      .grid{
+        grid-template-columns:repeat(3,1fr);
+      }
+    }
+
+    @media (min-width:1024px){
+      .grid{
+        grid-template-columns:repeat(5,1fr);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="header">
+    <div class="title">菜單缺貨管理</div>
+    <div class="subtitle">點擊按鈕切換販售中 / 已售完</div>
+  </div>
+
+  <div id="menuGrid" class="grid"></div>
+  <div id="notice" class="notice" role="alert"></div>
+
+  <script>
+    let menuItems = [];
+    const pendingRows = new Set();
+
+    function loadMenu(){
+
+      google.script.run
+        .withSuccessHandler(renderMenu)
+        .withFailureHandler(error => {
+          showNotice(
+            "菜單載入失敗：" +
+            (error && error.message ? error.message : "未知錯誤")
+          );
+        })
+        .getMenuItems();
+
+    }
+
+    function renderMenu(items){
+
+      menuItems = items;
+
+      const grid =
+        document.getElementById("menuGrid");
+
+      grid.innerHTML = "";
+
+      items.forEach(item => {
+
+        const card =
+          document.createElement("div");
+
+        card.className =
+          "card" +
+          (item.isSoldOut ? " sold-out" : "");
+
+        card.innerHTML = `
+
+          <div class="image-wrap">
+            ${
+              item.imageUrl
+              ?
+              `<img src="${item.imageUrl}">`
+              :
+              `<div class="no-image">無圖片</div>`
+            }
+          </div>
+
+          <div class="content">
+
+            <div class="name">
+              ${item.name}
+            </div>
+
+            <div class="price">
+              $${item.price}
+            </div>
+
+            <button
+              class="btn ${item.isSoldOut ? "soldout-btn" : "available-btn"}"
+              onclick="toggleItem(${item.rowIndex}, ${!item.isSoldOut})"
+              ${pendingRows.has(item.rowIndex) ? "disabled" : ""}>
+
+              ${
+                pendingRows.has(item.rowIndex)
+                ? "儲存中..."
+                : (item.isSoldOut ? "已售完" : "販售中")
+              }
+
+            </button>
+
+          </div>
+
+        `;
+
+        grid.appendChild(card);
+
+      });
+
+    }
+
+    function toggleItem(
+      rowIndex,
+      isSoldOut
+    ){
+
+      const item =
+        menuItems.find(
+          menuItem =>
+            menuItem.rowIndex === rowIndex
+        );
+
+      if(!item || pendingRows.has(rowIndex)){
+        return;
+      }
+
+      const previousValue =
+        item.isSoldOut;
+
+      item.isSoldOut =
+        isSoldOut;
+
+      pendingRows.add(rowIndex);
+
+      // 先更新畫面，Apps Script 寫入在背景完成。
+      renderMenu(menuItems);
+
+      google.script.run
+        .withSuccessHandler(() => {
+
+          pendingRows.delete(rowIndex);
+          renderMenu(menuItems);
+
+        })
+        .withFailureHandler(error => {
+
+          item.isSoldOut =
+            previousValue;
+
+          pendingRows.delete(rowIndex);
+          renderMenu(menuItems);
+
+          showNotice(
+            "更新失敗，已恢復原本狀態：" +
+            (error && error.message ? error.message : "未知錯誤")
+          );
+
+        })
+        .updateSoldOut(
+          rowIndex,
+          isSoldOut
+        );
+
+    }
+
+    function showNotice(message){
+
+      const notice =
+        document.getElementById("notice");
+
+      notice.textContent = message;
+      notice.style.display = "block";
+
+      window.clearTimeout(
+        showNotice.timer
+      );
+
+      showNotice.timer =
+        window.setTimeout(() => {
+          notice.style.display = "none";
+        },5000);
+
+    }
+
+    loadMenu();
+  </script>
+
+</body>
+</html>
