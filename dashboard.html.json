@@ -33,7 +33,7 @@
       color:var(--text);
       background:var(--bg);
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
-      font-size:16px;
+      font-size:18px;
       letter-spacing:0;
     }
 
@@ -62,14 +62,14 @@
 
     .brand h1{
       margin:0;
-      font-size:23px;
+      font-size:25px;
       line-height:1.3;
     }
 
     .brand p{
       margin:3px 0 0;
       color:var(--muted);
-      font-size:15px;
+      font-size:17px;
     }
 
     .actions{
@@ -80,6 +80,9 @@
     }
 
     .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
       min-height:44px;
       padding:9px 15px;
       border:1px solid var(--border);
@@ -128,12 +131,12 @@
 
     .section-heading h2{
       margin:0;
-      font-size:20px;
+      font-size:22px;
     }
 
     .section-heading span{
       color:var(--muted);
-      font-size:15px;
+      font-size:17px;
     }
 
     .period-control{
@@ -144,7 +147,7 @@
 
     .period-control label{
       color:var(--muted);
-      font-size:15px;
+      font-size:17px;
       font-weight:650;
     }
 
@@ -157,7 +160,7 @@
       border:1px solid var(--border);
       border-radius:6px;
       font:inherit;
-      font-size:16px;
+      font-size:18px;
       font-weight:700;
     }
 
@@ -180,13 +183,13 @@
 
     .metric-label{
       color:var(--muted);
-      font-size:17px;
+      font-size:19px;
       font-weight:650;
     }
 
     .metric-value{
       margin-top:12px;
-      font-size:34px;
+      font-size:36px;
       line-height:1.1;
       font-weight:760;
       font-variant-numeric:tabular-nums;
@@ -196,7 +199,7 @@
     .metric-note{
       margin-top:9px;
       color:var(--muted);
-      font-size:15px;
+      font-size:17px;
     }
 
     .metric.green{
@@ -242,12 +245,12 @@
 
     .panel-header h2{
       margin:0;
-      font-size:19px;
+      font-size:21px;
     }
 
     .panel-header span{
       color:var(--muted);
-      font-size:14px;
+      font-size:16px;
     }
 
     .chart{
@@ -270,7 +273,7 @@
     .status-chip{
       padding:10px 12px;
       border-radius:6px;
-      font-size:16px;
+      font-size:18px;
       font-weight:700;
     }
 
@@ -300,7 +303,7 @@
       align-items:center;
       gap:10px;
       min-height:48px;
-      font-size:16px;
+      font-size:18px;
     }
 
     .rank-number{
@@ -342,7 +345,7 @@
     table{
       width:100%;
       border-collapse:collapse;
-      font-size:16px;
+      font-size:18px;
     }
 
     th,
@@ -356,7 +359,7 @@
     th{
       color:var(--muted);
       background:#fafbfc;
-      font-size:14px;
+      font-size:16px;
       font-weight:700;
     }
 
@@ -376,7 +379,7 @@
       padding:6px 10px;
       border-radius:4px;
       text-align:center;
-      font-size:14px;
+      font-size:16px;
       font-weight:700;
     }
 
@@ -392,7 +395,7 @@
 
     .price-warning{
       color:var(--red);
-      font-size:14px;
+      font-size:16px;
       font-weight:700;
     }
 
@@ -403,7 +406,7 @@
       min-height:150px;
       padding:24px;
       color:var(--muted);
-      font-size:16px;
+      font-size:18px;
       text-align:center;
     }
 
@@ -427,7 +430,7 @@
       border:1px solid var(--border);
       border-radius:8px;
       box-shadow:0 8px 24px rgba(23,32,51,0.16);
-      font-size:16px;
+      font-size:18px;
       font-weight:700;
     }
 
@@ -439,7 +442,101 @@
       background:var(--red-soft);
       border:1px solid #efbcbc;
       border-radius:6px;
-      font-size:16px;
+      font-size:18px;
+    }
+
+    .ai-order-control{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:18px;
+      margin-bottom:20px;
+      padding:16px 18px;
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-left:5px solid var(--green);
+      border-radius:6px;
+      box-shadow:var(--shadow);
+    }
+
+    .ai-order-control.paused{
+      border-left-color:var(--red);
+      background:#fffafa;
+    }
+
+    .ai-order-copy{
+      min-width:0;
+    }
+
+    .ai-order-title{
+      margin:0;
+      font-size:20px;
+      font-weight:750;
+    }
+
+    .ai-order-detail{
+      margin:4px 0 0;
+      color:var(--muted);
+      font-size:17px;
+      line-height:1.45;
+    }
+
+    .switch-control{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      flex-shrink:0;
+      cursor:pointer;
+      font-size:19px;
+      font-weight:750;
+    }
+
+    .switch-control input{
+      position:absolute;
+      width:1px;
+      height:1px;
+      overflow:hidden;
+      opacity:0;
+    }
+
+    .switch-track{
+      position:relative;
+      width:56px;
+      height:32px;
+      border-radius:16px;
+      background:#aab2bd;
+      transition:background 160ms ease;
+    }
+
+    .switch-track::after{
+      content:"";
+      position:absolute;
+      top:4px;
+      left:4px;
+      width:24px;
+      height:24px;
+      border-radius:50%;
+      background:#fff;
+      box-shadow:0 1px 3px rgba(23,32,51,0.28);
+      transition:transform 160ms ease;
+    }
+
+    .switch-control input:checked + .switch-track{
+      background:var(--green);
+    }
+
+    .switch-control input:checked + .switch-track::after{
+      transform:translateX(24px);
+    }
+
+    .switch-control input:focus-visible + .switch-track{
+      outline:3px solid rgba(37,99,168,0.28);
+      outline-offset:3px;
+    }
+
+    .switch-control input:disabled + .switch-track{
+      cursor:wait;
+      opacity:0.55;
     }
 
     @media (max-width:980px){
@@ -471,11 +568,24 @@
       .btn{
         min-height:44px;
         padding:8px 11px;
-        font-size:15px;
+        font-size:17px;
       }
 
       main{
         padding:16px 12px 28px;
+      }
+
+      .ai-order-control{
+        align-items:flex-start;
+        padding:15px 14px;
+      }
+
+      .ai-order-detail{
+        font-size:16px;
+      }
+
+      .switch-control{
+        gap:8px;
       }
 
       .metric-grid{
@@ -488,15 +598,15 @@
       }
 
       .metric-value{
-        font-size:28px;
+        font-size:32px;
       }
 
       .metric-label{
-        font-size:16px;
+        font-size:18px;
       }
 
       .metric-note{
-        font-size:14px;
+        font-size:16px;
       }
 
       .section-heading{
@@ -509,7 +619,7 @@
 
       .period-select{
         min-width:124px;
-        font-size:15px;
+        font-size:17px;
       }
 
       .chart{
@@ -542,6 +652,18 @@
 
   <main>
     <div id="errorBanner" class="error-banner" role="alert"></div>
+
+    <section id="aiOrderControl" class="ai-order-control" aria-live="polite">
+      <div class="ai-order-copy">
+        <h2 class="ai-order-title">AI 接單</h2>
+        <p id="aiOrderDetail" class="ai-order-detail">正在讀取接單狀態</p>
+      </div>
+      <label class="switch-control" for="aiOrderToggle">
+        <span id="aiOrderLabel">讀取中</span>
+        <input id="aiOrderToggle" type="checkbox" disabled onchange="changeAiOrderStatus(this.checked)">
+        <span class="switch-track" aria-hidden="true"></span>
+      </label>
+    </section>
 
     <div class="section-heading">
       <h2>營運概況</h2>
@@ -692,6 +814,7 @@
         .withSuccessHandler(function(data){
           latestData = data;
           renderDashboard(data);
+          renderAiOrderStatus(data.aiOrderStatus);
           setLoading(false);
         })
         .withFailureHandler(function(error){
@@ -701,6 +824,51 @@
         .getAdminDashboardData(
           selectedMonth
         );
+    }
+
+    function renderAiOrderStatus(status){
+      const enabled = !status || status.enabled !== false;
+      const control = document.getElementById("aiOrderControl");
+      const toggle = document.getElementById("aiOrderToggle");
+      const label = document.getElementById("aiOrderLabel");
+      const detail = document.getElementById("aiOrderDetail");
+
+      toggle.checked = enabled;
+      toggle.disabled = false;
+      label.textContent = enabled ? "啟用" : "暫停";
+      control.classList.toggle("paused",!enabled);
+
+      const updatedAt = status && status.updatedAt
+        ? "最後切換時間 " + status.updatedAt
+        : "尚未手動切換";
+
+      detail.textContent = enabled
+        ? "目前會解析 LINE 訊息並寫入訂單。" + updatedAt
+        : "目前不呼叫 AI、不寫入訂單，也不自動回覆。" + updatedAt;
+    }
+
+    function changeAiOrderStatus(enabled){
+      const toggle = document.getElementById("aiOrderToggle");
+
+      if(!enabled && !window.confirm("確定要暫停 AI 接單嗎？暫停期間的 LINE 訊息不會回覆或寫入訂單。")){
+        toggle.checked = true;
+        return;
+      }
+
+      toggle.disabled = true;
+      document.getElementById("aiOrderLabel").textContent = "儲存中";
+
+      google.script.run
+        .withSuccessHandler(function(status){
+          renderAiOrderStatus(status);
+        })
+        .withFailureHandler(function(error){
+          toggle.checked = !enabled;
+          toggle.disabled = false;
+          showError(error && error.message ? error.message : "無法更新 AI 接單狀態");
+          loadDashboard(false);
+        })
+        .setAiOrderEnabled(enabled);
     }
 
     function initializeMenuLink(){
@@ -912,11 +1080,11 @@
         chartArea:{left:66,top:28,width:"78%",height:"68%"},
         colors:["#16805b","#2563a8"],
         fontName:"Arial",
-        legend:{position:"top",alignment:"end",textStyle:{color:"#657084",fontSize:14}},
-        hAxis:{textStyle:{color:"#657084",fontSize:13},gridlines:{color:"transparent"}},
+        legend:{position:"top",alignment:"end",textStyle:{color:"#657084",fontSize:16}},
+        hAxis:{textStyle:{color:"#657084",fontSize:15},gridlines:{color:"transparent"}},
         vAxes:{
-          0:{format:"$#,###",textStyle:{color:"#657084",fontSize:13},gridlines:{color:"#e7e9ed"},minValue:0},
-          1:{format:"0",textStyle:{color:"#657084",fontSize:13},gridlines:{color:"transparent"},minValue:0}
+          0:{format:"$#,###",textStyle:{color:"#657084",fontSize:15},gridlines:{color:"#e7e9ed"},minValue:0},
+          1:{format:"0",textStyle:{color:"#657084",fontSize:15},gridlines:{color:"transparent"},minValue:0}
         },
         seriesType:"bars",
         series:{
@@ -924,7 +1092,7 @@
           1:{type:"line",targetAxisIndex:1,lineWidth:3,pointSize:4}
         },
         bar:{groupWidth:"58%"},
-        tooltip:{textStyle:{fontSize:15}}
+        tooltip:{textStyle:{fontSize:17}}
       });
     }
 
@@ -949,9 +1117,9 @@
         colors:["#d8892d","#16805b"],
         pieHole:0.62,
         pieSliceText:"value",
-        pieSliceTextStyle:{color:"#ffffff",fontSize:15},
+        pieSliceTextStyle:{color:"#ffffff",fontSize:17},
         legend:{position:"none"},
-        tooltip:{textStyle:{fontSize:15}}
+        tooltip:{textStyle:{fontSize:17}}
       });
     }
 

@@ -23,9 +23,6 @@ const GAS_URL =
 const GAS_SHARED_SECRET =
   getRequiredEnv('GAS_SHARED_SECRET');
 
-const CLOUD_RUN_NOTIFY_SECRET =
-  getRequiredEnv('CLOUD_RUN_NOTIFY_SECRET');
-
 const LINE_CHANNEL_ACCESS_TOKEN =
   getRequiredEnv('LINE_CHANNEL_ACCESS_TOKEN');
 
@@ -95,62 +92,6 @@ functions.http(
   async (req, res) => {
 
     try{
-
-      // 完成通知
-      if(req.path === "/notifyReady"){
-
-        try{
-
-          if(
-            req.method !== "POST" ||
-            !req.body ||
-            req.body.notifySecret !==
-              CLOUD_RUN_NOTIFY_SECRET
-          ){
-            return res
-              .status(401)
-              .send("UNAUTHORIZED");
-          }
-
-          const userId =
-            req.body.userId;
-
-          const orderId =
-            req.body.orderId;
-
-          await lineApi.post(
-            '/message/push',
-            {
-              to:userId,
-              messages:[
-                {
-                  type:"text",
-                  text:
-`🎉 您的訂單已完成
-
-訂單編號：${orderId}
-
-歡迎前來取餐！`
-                }
-              ]
-            }
-          );
-
-          return res
-            .status(200)
-            .send("OK");
-
-        }catch(error){
-
-          console.error(error);
-
-          return res
-            .status(500)
-            .send("ERROR");
-
-        }
-
-      }
 
       if(req.method !== "POST"){
         return res
@@ -302,7 +243,7 @@ functions.http(
                 {
                   type:"text",
                   text:
-        `不好意思，以下品項今日已售完：\n\n${result.soldOutItems.join("、")}\n\n請重新傳送完整訂單。`
+        `不好意思，以下品項今日已售完：\n\n${result.soldOutItems.join("、")}\n\n如需更換其他請重新挑選後傳送。`
                 }
               ]
             }
@@ -374,15 +315,14 @@ ${result.missingItems.join("、")}`;
 
 ${orderText}
 ${priceText}
-
-🕒 預計取餐：
-${result.estimatedPickupTime}
+🕒 預計取餐：${result.estimatedPickupTime}
+※ 實際取餐時間依現場製作進度為準
 
 訂單編號：
 ${result.orderId}
 
 如需修改，
-請在 20 分鐘內重新傳送完整訂單。`
+請在 20 分鐘內直接傳送追加或修改內容。`
 
               }
 

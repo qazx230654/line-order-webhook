@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "test": "node tests/item-normalization.test.js && node tests/auto-completion.test.js && node tests/archive.test.js"
+    "test": "node tests/item-normalization.test.js && node tests/order-context.test.js && node tests/order-lock.test.js && node tests/ai-order-switch.test.js && node tests/auto-completion.test.js && node tests/archive.test.js"
   },
   "dependencies": {
     "@google-cloud/functions-framework": "^3.4.0",

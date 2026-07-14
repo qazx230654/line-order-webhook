@@ -1,106 +1,97 @@
 const SYSTEM_PROMPT = `
-你是一位滷味店訂單解析助手。
+你是滷味訂單解析器。輸入包含 current_message 與 existing_order。
 
-請將客戶訊息解析為 JSON。
+只依 current_message 判斷 is_order：包含商品、數量、製作備註、分袋或取餐時間為 true；詢價、營業或菜單詢問、聊天、感謝、招呼、取消為 false。existing_order 不得使非訂單訊息變成訂單。
 
-任務：
+is_order=true 時回傳處理後的完整訂單：
+- existing_order=null：update_mode="replace"。
+- 有 existing_order，且本次是無「再、加、追加、改、第幾份」等承接語的完整清單：replace。
+- 追加或局部修改：update_mode="merge"，保留未修改的商品、備註、客戶資料與 pickup_time。
+- 「再一份／另外一份」在同一訂單新增 group，不建立第二張訂單；未指定商品則複製最近 group，再套用新備註。
+- 第一袋、第二袋、分開裝、編號或不同備註代表不同 groups；指定第幾份時只修改該 group。單一「一般」group 被追加時依序改名第一份、第二份。
 
-1. 辨識取餐時間
-2. 辨識商品與數量
-3. 辨識備註（辣度、酸菜、蔥、做熱等）
+items 規則：
+- quantity 為數字；半份／半個=0.5，一份半=1.5，兩份半=2.5。
+- raw_name 保留客戶原商品文字且不含數量。
+- 能明確對應 menu 時 name 使用完全相同的正式名稱；否則 name=raw_name，suggested_name 可填最接近的 menu 名稱，無候選填空字串。
+- 不可創造 menu 以外的正式名稱。
 
-分組規則：
+pickup_time：客人有指定才轉成 Asia/Taipei 的 yyyy/MM/dd HH:mm；只有時間用今天，日期語意須正確換算。未指定時保留 existing_order.pickup_time，無 existing_order 則填空字串。
 
-若訊息中出現：
-
-* 第一袋、第二袋
-* 分開裝
-* 不同辣度
-* 不同備註
-* 編號 1. 2. 3.
-
-代表同一筆訂單包含多組內容。
-
-請建立 groups 陣列，
-每個 group 代表一袋或一組獨立製作需求。
-
-訂單判斷：
-
-若訊息包含任一項：
-
-* 商品名稱
-* 商品數量
-* 備註（辣度、酸菜、做熱等）
-* 取餐時間
-* 分袋需求
-
-則：
-
-"is_order": true
-
-若屬於：
-
-* 詢問價格
-* 詢問營業時間
-* 詢問菜單
-* 一般聊天
-* 感謝
-* 打招呼
-* 取消訂單
-* 其他非點餐內容
-
-則：
-
-"is_order": false
-
-回傳格式：
-
-{
-"is_order": true,
-"customer_name": "",
-"phone": "",
-"pickup_time": "",
-"groups": [
-{
-"name": "",
-"items": [
-{
-"name": "",
-"raw_name": "",
-"suggested_name": "",
-"quantity": 1
-}
-],
-"note": ""
-}
-]
-}
-
-規則：
-
-1. 僅回傳 JSON
-2. 不要 markdown
-3. 不要解釋
-4. 缺少資料請填空字串
-5. quantity 必須為數字
-6. 數量轉換規則：
-   - 「半份」= 0.5
-   - 「半個」= 0.5
-   - 「半」若明確接在商品後面，也視為 0.5
-   - 「一份半」= 1.5
-   - 「1份半」= 1.5
-   - 「兩份半」= 2.5
-7. raw_name 必須保留客戶原本輸入的商品名稱，不包含數量
-8. 若能明確對應正式菜單，name 必須使用完全相同的正式名稱，suggested_name 填空字串
-9. 若無法明確對應，name 與 raw_name 相同；suggested_name 可填最接近的正式名稱，無合理候選則填空字串
-10. 不可自行創造正式菜單以外的商品名稱
-11. 若有取餐時間，pickup_time 必須轉成 Asia/Taipei 時區的 yyyy/MM/dd HH:mm；只有時間時使用今天日期，明天或其他日期則換算成正確日期
+僅回傳 JSON，不要 markdown 或解釋。空缺字串填 ""。
+格式：{"is_order":true,"update_mode":"replace|merge|none","customer_name":"","phone":"","pickup_time":"","groups":[{"name":"","items":[{"name":"","raw_name":"","suggested_name":"","quantity":1}],"note":""}]}
    `;
 
-const CLOUD_RUN_NOTIFY_URL =
-  "https://line-order-webhook-171295331325.asia-east1.run.app/notifyReady";
+const AI_ORDER_ENABLED_PROPERTY_ = "AI_ORDER_ENABLED";
+const AI_ORDER_UPDATED_AT_PROPERTY_ = "AI_ORDER_UPDATED_AT";
 
-function parseOrder(message) {
+function isAiOrderEnabled_() {
+  const value = PropertiesService.getScriptProperties().getProperty(
+    AI_ORDER_ENABLED_PROPERTY_,
+  );
+
+  return String(value || "true").toLowerCase() !== "false";
+}
+
+function getAiOrderStatus() {
+  const properties = PropertiesService.getScriptProperties();
+
+  return {
+    enabled: isAiOrderEnabled_(),
+    updatedAt: properties.getProperty(AI_ORDER_UPDATED_AT_PROPERTY_) || "",
+  };
+}
+
+function setAiOrderEnabled(enabled) {
+  if (typeof enabled !== "boolean") {
+    throw new Error("AI 接單狀態必須是布林值");
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+
+  try {
+    const properties = PropertiesService.getScriptProperties();
+    const updatedAt = Utilities.formatDate(
+      new Date(),
+      "Asia/Taipei",
+      "yyyy/MM/dd HH:mm:ss",
+    );
+
+    properties.setProperties({
+      [AI_ORDER_ENABLED_PROPERTY_]: enabled ? "true" : "false",
+      [AI_ORDER_UPDATED_AT_PROPERTY_]: updatedAt,
+    });
+
+    return {
+      enabled,
+      updatedAt,
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function assertAiOrderEnabledForWrite_() {
+  if (isAiOrderEnabled_()) {
+    return;
+  }
+
+  const error = new Error("AI_ORDER_DISABLED");
+  error.code = "AI_ORDER_DISABLED";
+  throw error;
+}
+
+function createAssistantDisabledOutput_() {
+  return ContentService.createTextOutput(
+    JSON.stringify({
+      is_order: false,
+      assistant_disabled: true,
+    }),
+  ).setMimeType(ContentService.MimeType.JSON);
+}
+
+function parseOrder(message, editableOrder = null) {
   const apiKey =
     PropertiesService.getScriptProperties().getProperty("OPENAI_API_KEY");
 
@@ -113,14 +104,8 @@ function parseOrder(message) {
   );
 
   const menuPrompt = `
-
-目前時間（Asia/Taipei）：${currentTime}
-
-正式菜單名稱（只能從此清單選擇）：
-${JSON.stringify(menuItemNames)}
-
-只有在能明確判斷時，才將 name 改成清單內的正式名稱。
-無法確定時保留客戶原文，交由後端標記，不可猜測。
+now=${currentTime} (Asia/Taipei)
+menu=${JSON.stringify(menuItemNames)}
 `;
 
   const payload = {
@@ -136,7 +121,13 @@ ${JSON.stringify(menuItemNames)}
       },
       {
         role: "user",
-        content: message,
+        content:
+          "input=" +
+          JSON.stringify({
+            current_message: String(message || ""),
+            existing_order:
+              editableOrder && editableOrder.order ? editableOrder.order : null,
+          }),
       },
     ],
   };
@@ -167,12 +158,14 @@ function saveOrder(
   systemOrderId = null,
   displayOrderId = null,
   createdAt = null,
+  requireAiOrderEnabled = false,
 ) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Orders");
 
   const priceMap = getPriceMap();
 
   const priceColumn = 14;
+  const pickupTimeSourceColumn = 15;
 
   systemOrderId = systemOrderId || generateSystemOrderId();
 
@@ -226,6 +219,8 @@ function saveOrder(
         lineUserId,
 
         unitPrice === undefined ? "UNPRICED" : unitPrice,
+
+        normalizePickupTimeSource_(order.pickup_time_source),
       ]);
     });
   });
@@ -239,8 +234,18 @@ function saveOrder(
   lock.waitLock(30000);
 
   try {
+    if (requireAiOrderEnabled) {
+      assertAiOrderEnabledForWrite_();
+    }
+
     if (!sheet.getRange(1, priceColumn).getValue()) {
       sheet.getRange(1, priceColumn).setValue("unit_price");
+    }
+
+    if (!sheet.getRange(1, pickupTimeSourceColumn).getValue()) {
+      sheet
+        .getRange(1, pickupTimeSourceColumn)
+        .setValue("pickup_time_source");
     }
 
     sheet
@@ -259,6 +264,50 @@ function saveOrder(
   };
 }
 
+function initializePickupTimeSourceColumn() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Orders");
+  const lock = LockService.getScriptLock();
+
+  lock.waitLock(30000);
+
+  try {
+    sheet.getRange(1, 15).setValue("pickup_time_source");
+
+    if (sheet.getLastRow() <= 1) {
+      return {
+        initialized: true,
+        updatedRows: 0,
+      };
+    }
+
+    const values = sheet.getDataRange().getDisplayValues();
+    let updatedRows = 0;
+
+    const sources = values.slice(1).map((row) => {
+      const existingSource = normalizePickupTimeSource_(row[14]);
+
+      if (existingSource || !row[8]) {
+        return [existingSource];
+      }
+
+      updatedRows++;
+
+      return [
+        messageUpdatesPickupTime_(row[11]) ? "requested" : "estimated",
+      ];
+    });
+
+    sheet.getRange(2, 15, sources.length, 1).setValues(sources);
+
+    return {
+      initialized: true,
+      updatedRows,
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function manualCreateOrder(message) {
   const order = parseOrder(message);
 
@@ -268,7 +317,10 @@ function manualCreateOrder(message) {
 
   const normalizationResult = normalizeItems(order);
 
-  ensureOrderPickupTime_(order, Math.max(getEstimatedWaitMinutes() + 5, 10));
+  ensureOrderPickupTime_(
+    order,
+    getFinalEstimatedWaitMinutes_(getEstimatedWaitMinutes(), order),
+  );
 
   const saveResult = saveOrder(order, message);
 
@@ -372,7 +424,6 @@ function getOrders() {
 }
 
 function updateOrderStatus(systemOrderId) {
-  let lineUserId = "";
   let displayOrderId = "";
 
   const lock = LockService.getScriptLock();
@@ -396,7 +447,6 @@ function updateOrderStatus(systemOrderId) {
       matchingRows.push(i + 1);
 
       if (!displayOrderId) {
-        lineUserId = values[i][12];
         displayOrderId = values[i][1];
       }
 
@@ -425,31 +475,10 @@ function updateOrderStatus(systemOrderId) {
     lock.releaseLock();
   }
 
-  if (!lineUserId) {
-    return {
-      systemOrderId,
-      displayOrderId,
-      notified: false,
-    };
-  }
-
-  console.log("通知使用者:", lineUserId);
-
-  UrlFetchApp.fetch(CLOUD_RUN_NOTIFY_URL, {
-    method: "post",
-    contentType: "application/json",
-
-    payload: JSON.stringify({
-      userId: lineUserId,
-      orderId: displayOrderId,
-      notifySecret: getRequiredScriptProperty_("CLOUD_RUN_NOTIFY_SECRET"),
-    }),
-  });
-
   return {
     systemOrderId,
     displayOrderId,
-    notified: true,
+    notified: false,
   };
 }
 
@@ -1080,6 +1109,7 @@ function getAliasMap() {
     SpreadsheetApp.getActiveSpreadsheet().getSheetByName("ItemAlias");
 
   const map = Object.create(null);
+  const manualAliasKeys = Object.create(null);
 
   if (sheet) {
     const values = sheet.getDataRange().getValues();
@@ -1091,6 +1121,7 @@ function getAliasMap() {
 
       if (alias && canonicalName) {
         map[alias] = canonicalName;
+        manualAliasKeys[normalizeItemKey_(alias)] = true;
       }
     }
   }
@@ -1114,7 +1145,11 @@ function getAliasMap() {
 
       const canonicalName = String(values[i][1] || "").trim();
 
-      if (alias && canonicalName) {
+      if (
+        alias &&
+        canonicalName &&
+        !manualAliasKeys[normalizeItemKey_(alias)]
+      ) {
         map[alias] = canonicalName;
       }
     }
@@ -1123,20 +1158,79 @@ function getAliasMap() {
   return map;
 }
 
-function getEstimatedWaitMinutes() {
+function getPreparationItemCount_(quantityValue) {
+  const quantity = Number(quantityValue);
+
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    return 1;
+  }
+
+  // 「品項20」是既有的金額式輸入，製作量仍只算一項。
+  if (quantity > 10) {
+    return 1;
+  }
+
+  return Math.max(1, Math.ceil(quantity));
+}
+
+function getOrderPreparationMinutes_(order) {
+  if (!order || !Array.isArray(order.groups)) {
+    return 0;
+  }
+
+  let itemCount = 0;
+
+  order.groups.forEach((group) => {
+    if (!group || !Array.isArray(group.items)) {
+      return;
+    }
+
+    group.items.forEach((item) => {
+      itemCount += getPreparationItemCount_(item && item.quantity);
+    });
+  });
+
+  return itemCount * 0.5;
+}
+
+const MINIMUM_ESTIMATED_WAIT_MINUTES_ = 10;
+const ORDER_HANDLING_MINUTES_ = 1.5;
+
+function getFinalEstimatedWaitMinutes_(queueMinutes, order) {
+  const calculatedMinutes =
+    Number(queueMinutes) +
+    getOrderPreparationMinutes_(order) +
+    ORDER_HANDLING_MINUTES_;
+
+  return Math.max(
+    Math.ceil(calculatedMinutes),
+    MINIMUM_ESTIMATED_WAIT_MINUTES_,
+  );
+}
+
+function getEstimatedWaitMinutes(excludedSystemOrderId = "") {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Orders");
 
   const values = sheet.getDataRange().getDisplayValues();
 
-  const orderIds = new Set();
+  let itemCount = 0;
 
   for (let i = 1; i < values.length; i++) {
-    if (values[i][10] === "待製作") {
-      orderIds.add(values[i][0]);
+    if (values[i][10] !== "待製作") {
+      continue;
     }
+
+    if (
+      excludedSystemOrderId &&
+      String(values[i][0]) === String(excludedSystemOrderId)
+    ) {
+      continue;
+    }
+
+    itemCount += getPreparationItemCount_(values[i][7]);
   }
-  //一單製作時間 預計分鐘數
-  return orderIds.size * 5;
+
+  return itemCount * 0.5;
 }
 
 function getEstimatedPickupTime(waitMinutes, now = new Date()) {
@@ -1161,27 +1255,42 @@ function getPickupTimeDisplay_(pickupTime, createdAt = new Date()) {
   return String(pickupTime || "").trim();
 }
 
+function normalizePickupTimeSource_(value) {
+  const source = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  return source === "requested" || source === "estimated" ? source : "";
+}
+
 function ensureOrderPickupTime_(order, waitMinutes, now = new Date()) {
   const requestedPickupTime = String(order.pickup_time || "").trim();
 
   if (requestedPickupTime) {
+    const pickupTimeSource =
+      normalizePickupTimeSource_(order.pickup_time_source) || "requested";
+
     order.pickup_time = requestedPickupTime;
+    order.pickup_time_source = pickupTimeSource;
 
     return {
       pickupTime: requestedPickupTime,
       displayTime: getPickupTimeDisplay_(requestedPickupTime, now),
-      estimated: false,
+      estimated: pickupTimeSource === "estimated",
+      pickupTimeSource,
     };
   }
 
   const estimatedPickupTime = getEstimatedPickupDateTime_(waitMinutes, now);
 
   order.pickup_time = estimatedPickupTime;
+  order.pickup_time_source = "estimated";
 
   return {
     pickupTime: estimatedPickupTime,
     displayTime: getPickupTimeDisplay_(estimatedPickupTime, now),
     estimated: true,
+    pickupTimeSource: "estimated",
   };
 }
 
@@ -1285,6 +1394,20 @@ function resolveCanonicalItemName_(value, normalizationData) {
   return normalizationData.aliasNormalized[normalizedKey] || null;
 }
 
+function resolveAliasItemName_(value, normalizationData) {
+  const name = String(value || "").trim();
+
+  if (!name) {
+    return null;
+  }
+
+  if (normalizationData.aliasExact[name]) {
+    return normalizationData.aliasExact[name];
+  }
+
+  return normalizationData.aliasNormalized[normalizeItemKey_(name)] || null;
+}
+
 function normalizeItems(order) {
   const normalizationData = getItemNormalizationData_();
 
@@ -1305,6 +1428,7 @@ function normalizeItems(order) {
       const rawName = String(item.raw_name || parsedName).trim();
 
       const canonicalName =
+        resolveAliasItemName_(rawName, normalizationData) ||
         resolveCanonicalItemName_(parsedName, normalizationData) ||
         resolveCanonicalItemName_(rawName, normalizationData);
 
@@ -1509,6 +1633,152 @@ function deleteOrder(systemOrderId) {
   }
 }
 
+function buildExistingOrderContext_(values, systemOrderId) {
+  const order = {
+    customer_name: "",
+    phone: "",
+    pickup_time: "",
+    pickup_time_source: "",
+    groups: [],
+  };
+
+  const groupIndexes = {};
+
+  let rawMessage = "";
+
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+
+    if (String(row[0]) !== String(systemOrderId)) {
+      continue;
+    }
+
+    order.customer_name = order.customer_name || row[3] || "";
+    order.phone = order.phone || row[4] || "";
+    order.pickup_time = order.pickup_time || row[8] || "";
+    order.pickup_time_source =
+      order.pickup_time_source || normalizePickupTimeSource_(row[14]);
+    rawMessage = rawMessage || row[11] || "";
+
+    const groupName = String(row[5] || "一般");
+    const groupNote = String(row[9] || "");
+    const groupKey = groupName + "\u0000" + groupNote;
+
+    if (groupIndexes[groupKey] === undefined) {
+      groupIndexes[groupKey] = order.groups.length;
+      order.groups.push({
+        name: groupName,
+        items: [],
+        note: groupNote,
+      });
+    }
+
+    if (row[6]) {
+      order.groups[groupIndexes[groupKey]].items.push({
+        name: String(row[6]),
+        raw_name: String(row[6]),
+        suggested_name: "",
+        quantity: Number(row[7]) || 0,
+      });
+    }
+  }
+
+  if (!order.pickup_time_source && order.pickup_time) {
+    order.pickup_time_source = messageUpdatesPickupTime_(rawMessage)
+      ? "requested"
+      : "estimated";
+  }
+
+  return {
+    order,
+    rawMessage: String(rawMessage || ""),
+  };
+}
+
+function appendRawMessage_(previousMessage, currentMessage) {
+  const previous = String(previousMessage || "").trim();
+  const current = String(currentMessage || "").trim();
+
+  if (!previous) {
+    return current;
+  }
+
+  if (!current) {
+    return previous;
+  }
+
+  return previous + "\n\n" + current;
+}
+
+function messageUpdatesPickupTime_(message) {
+  const text = String(message || "").trim();
+
+  if (!text) {
+    return false;
+  }
+
+  return (
+    /(取餐|取貨|拿餐|領餐|來拿|取的時間|拿的時間)/.test(text) ||
+    /\d{1,2}\s*[:：]\s*\d{1,2}/.test(text) ||
+    /(?:早上|上午|中午|下午|晚上|今晚|明天|今天)?\s*[零〇一二兩三四五六七八九十\d]{1,3}\s*(?:點|時)(?:半|[零〇一二兩三四五六七八九十\d]{1,2}\s*分)?/.test(
+      text,
+    )
+  );
+}
+
+function updateEditablePickupTime_(order, editableOrder, currentMessage) {
+  if (!order || !editableOrder || !editableOrder.order) {
+    return;
+  }
+
+  if (messageUpdatesPickupTime_(currentMessage)) {
+    order.pickup_time_source = "requested";
+    return;
+  }
+
+  const existingOrder = editableOrder.order;
+  const existingPickupTime = existingOrder.pickup_time || "";
+  const existingSource =
+    normalizePickupTimeSource_(existingOrder.pickup_time_source) ||
+    (messageUpdatesPickupTime_(editableOrder.rawMessage)
+      ? "requested"
+      : "estimated");
+
+  order.pickup_time = existingPickupTime;
+  order.pickup_time_source = existingSource;
+
+  if (existingSource !== "estimated" || !existingPickupTime) {
+    return;
+  }
+
+  const addedPreparationMinutes =
+    getOrderPreparationMinutes_(order) -
+    getOrderPreparationMinutes_(existingOrder);
+
+  if (addedPreparationMinutes <= 0) {
+    return;
+  }
+
+  const existingPickupAt = parsePickupDateTime_(
+    existingPickupTime,
+    editableOrder.createdAt,
+  );
+
+  if (!existingPickupAt) {
+    return;
+  }
+
+  const shiftedTimestamp =
+    existingPickupAt.getTime() + addedPreparationMinutes * 60000;
+  const roundedTimestamp = Math.ceil(shiftedTimestamp / 60000) * 60000;
+
+  order.pickup_time = Utilities.formatDate(
+    new Date(roundedTimestamp),
+    "Asia/Taipei",
+    "yyyy/MM/dd HH:mm",
+  );
+}
+
 function findEditableOrder(lineUserId) {
   if (!lineUserId) {
     return null;
@@ -1516,9 +1786,15 @@ function findEditableOrder(lineUserId) {
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Orders");
 
-  const values = sheet.getDataRange().getValues();
+  const dataRange = sheet.getDataRange();
+
+  const values = dataRange.getValues();
+
+  const displayValues = dataRange.getDisplayValues();
 
   const now = new Date();
+
+  let candidate = null;
 
   for (let i = values.length - 1; i >= 1; i--) {
     if (String(values[i][12]).trim() !== String(lineUserId).trim()) {
@@ -1529,25 +1805,41 @@ function findEditableOrder(lineUserId) {
       continue;
     }
 
-    const createdAt = new Date(values[i][2]);
+    const createdAt = parseOrderDate_(values[i][2]);
+
+    if (!createdAt) {
+      continue;
+    }
 
     const diffMinutes = (now - createdAt) / 1000 / 60;
 
     // 建立後20分鐘內可修改
     if (diffMinutes >= 0 && diffMinutes <= 20) {
-      return {
+      candidate = {
         systemOrderId: values[i][0],
 
         displayOrderId: values[i][1],
 
         createdAt: values[i][2],
-
-        rawMessage: values[i][11],
       };
+
+      break;
     }
   }
 
-  return null;
+  if (!candidate) {
+    return null;
+  }
+
+  const context = buildExistingOrderContext_(
+    displayValues,
+    candidate.systemOrderId,
+  );
+
+  candidate.rawMessage = context.rawMessage;
+  candidate.order = context.order;
+
+  return candidate;
 }
 
 function updateOrder(
@@ -1560,13 +1852,16 @@ function updateOrder(
   let orderPersisted = false;
 
   try {
+    const rawMessage = appendRawMessage_(editableOrder.rawMessage, newMessage);
+
     const saveResult = saveOrder(
       order,
-      newMessage,
+      rawMessage,
       lineUserId,
       null,
       editableOrder.displayOrderId,
       editableOrder.createdAt,
+      true,
     );
 
     orderPersisted = true;
@@ -1670,6 +1965,280 @@ function initializeOrderArchiveSheets() {
   return {
     created: true,
     sheets: ["OrdersArchive", "MonthlySummary", "MonthlyItemSummary"],
+  };
+}
+
+function getArchivedTestOrderPrefix_(monthKey) {
+  return "DASHBOARD-TEST-" + monthKey.replace("/", "") + "-";
+}
+
+function buildArchivedTestOrderRows_(monthKey, orderCount, priceMap, archivedAt) {
+  const itemNames = Object.keys(priceMap).sort((a, b) =>
+    a.localeCompare(b, "zh-Hant"),
+  );
+
+  if (itemNames.length === 0) {
+    throw new Error("PriceList 沒有可用且已設定價格的品項");
+  }
+
+  const compactMonth = monthKey.replace("/", "");
+  const prefix = getArchivedTestOrderPrefix_(monthKey);
+  const rows = [];
+
+  for (let index = 0; index < orderCount; index++) {
+    const orderNumber = index + 1;
+    const suffix = String(orderNumber).padStart(3, "0");
+    const day = String((index % 28) + 1).padStart(2, "0");
+    const hour = 11 + (index % 8);
+    const minute = (index * 7) % 60;
+    const pickupTotalMinutes = hour * 60 + minute + 15;
+    const createdAt =
+      monthKey +
+      "/" +
+      day +
+      " " +
+      String(hour).padStart(2, "0") +
+      ":" +
+      String(minute).padStart(2, "0") +
+      ":00";
+    const pickupTime =
+      monthKey +
+      "/" +
+      day +
+      " " +
+      String(Math.floor(pickupTotalMinutes / 60)).padStart(2, "0") +
+      ":" +
+      String(pickupTotalMinutes % 60).padStart(2, "0");
+    const itemCount = (index % 3) + 1;
+
+    for (let itemIndex = 0; itemIndex < itemCount; itemIndex++) {
+      const itemName = itemNames[(index + itemIndex * 3) % itemNames.length];
+      const quantity = ((index + itemIndex) % 4) + 1;
+
+      rows.push([
+        prefix + suffix,
+        "T" + suffix,
+        createdAt,
+        "六月測試顧客" + String(orderNumber).padStart(2, "0"),
+        "",
+        "一般",
+        itemName,
+        quantity,
+        pickupTime,
+        index % 4 === 0 ? "測試備註：不辣" : "",
+        "已完成",
+        "Dashboard 六月歷史訂單測試資料",
+        "TEST-LINE-" + compactMonth + "-" + suffix,
+        priceMap[itemName],
+        archivedAt,
+      ]);
+    }
+  }
+
+  return rows;
+}
+
+function refreshArchiveMonthSummaries_(
+  archiveSheet,
+  summarySheet,
+  itemSummarySheet,
+  monthKey,
+  priceMap,
+  archivedAt,
+) {
+  const result = buildMonthlyArchiveData_(
+    archiveSheet.getDataRange().getValues(),
+    monthKey,
+    priceMap,
+  );
+
+  upsertMonthlySummary_(summarySheet, result.summary, archivedAt);
+  replaceMonthlyItemSummary_(
+    itemSummarySheet,
+    monthKey,
+    result.itemSummaries,
+  );
+
+  return result;
+}
+
+function generateArchivedTestOrders_(monthKey, orderCount) {
+  const targetMonth = validateArchiveMonth_(monthKey);
+  const count = Math.floor(Number(orderCount));
+
+  if (!Number.isFinite(count) || count < 1 || count > 200) {
+    throw new Error("測試訂單數量必須介於 1 到 200");
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const archiveSheet = ensureSheetWithHeaders_(
+      spreadsheet,
+      "OrdersArchive",
+      ORDER_ARCHIVE_HEADERS_,
+    );
+    const summarySheet = ensureSheetWithHeaders_(
+      spreadsheet,
+      "MonthlySummary",
+      MONTHLY_SUMMARY_HEADERS_,
+    );
+    const itemSummarySheet = ensureSheetWithHeaders_(
+      spreadsheet,
+      "MonthlyItemSummary",
+      MONTHLY_ITEM_SUMMARY_HEADERS_,
+    );
+    const prefix = getArchivedTestOrderPrefix_(targetMonth);
+    const existingValues = archiveSheet.getDataRange().getValues();
+    const oldTestRows = [];
+
+    for (let index = 1; index < existingValues.length; index++) {
+      if (String(existingValues[index][0] || "").startsWith(prefix)) {
+        oldTestRows.push(index + 1);
+      }
+    }
+
+    deleteOrderRows_(archiveSheet, oldTestRows);
+
+    const priceMap = getPriceMap();
+    const archivedAt = new Date();
+    const rows = buildArchivedTestOrderRows_(
+      targetMonth,
+      count,
+      priceMap,
+      archivedAt,
+    );
+
+    archiveSheet
+      .getRange(
+        archiveSheet.getLastRow() + 1,
+        1,
+        rows.length,
+        ORDER_ARCHIVE_HEADERS_.length,
+      )
+      .setValues(rows);
+
+    const result = refreshArchiveMonthSummaries_(
+      archiveSheet,
+      summarySheet,
+      itemSummarySheet,
+      targetMonth,
+      priceMap,
+      archivedAt,
+    );
+
+    return {
+      generated: true,
+      month: targetMonth,
+      generatedOrders: count,
+      generatedRows: rows.length,
+      replacedRows: oldTestRows.length,
+      monthSummary: result.summary,
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function clearArchivedTestOrders_(monthKey) {
+  const targetMonth = normalizeMonthKey_(monthKey);
+
+  if (!targetMonth) {
+    throw new Error("測試月份格式必須為 yyyy/MM");
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const archiveSheet = ensureSheetWithHeaders_(
+      spreadsheet,
+      "OrdersArchive",
+      ORDER_ARCHIVE_HEADERS_,
+    );
+    const summarySheet = ensureSheetWithHeaders_(
+      spreadsheet,
+      "MonthlySummary",
+      MONTHLY_SUMMARY_HEADERS_,
+    );
+    const itemSummarySheet = ensureSheetWithHeaders_(
+      spreadsheet,
+      "MonthlyItemSummary",
+      MONTHLY_ITEM_SUMMARY_HEADERS_,
+    );
+    const prefix = getArchivedTestOrderPrefix_(targetMonth);
+    const values = archiveSheet.getDataRange().getValues();
+    const testRows = [];
+
+    for (let index = 1; index < values.length; index++) {
+      if (String(values[index][0] || "").startsWith(prefix)) {
+        testRows.push(index + 1);
+      }
+    }
+
+    deleteOrderRows_(archiveSheet, testRows);
+
+    const archivedAt = new Date();
+    const result = refreshArchiveMonthSummaries_(
+      archiveSheet,
+      summarySheet,
+      itemSummarySheet,
+      targetMonth,
+      getPriceMap(),
+      archivedAt,
+    );
+
+    return {
+      cleared: true,
+      month: targetMonth,
+      removedRows: testRows.length,
+      remainingMonthOrders: result.summary.orderCount,
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function generateJuneArchiveTestOrders() {
+  return generateArchivedTestOrders_("2026/06", 25);
+}
+
+function clearJuneArchiveTestOrders() {
+  return clearArchivedTestOrders_("2026/06");
+}
+
+function getJuneArchiveTestStatus() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const archiveSheet = spreadsheet.getSheetByName("OrdersArchive");
+  const prefix = getArchivedTestOrderPrefix_("2026/06");
+  const orderIds = new Set();
+  let testRows = 0;
+
+  if (archiveSheet) {
+    const values = archiveSheet.getDataRange().getValues();
+
+    for (let index = 1; index < values.length; index++) {
+      const systemOrderId = String(values[index][0] || "");
+
+      if (systemOrderId.startsWith(prefix)) {
+        orderIds.add(systemOrderId);
+        testRows++;
+      }
+    }
+  }
+
+  const availableMonths = getAvailableDashboardMonths_();
+
+  return {
+    month: "2026/06",
+    archiveSheetExists: Boolean(archiveSheet),
+    testOrders: orderIds.size,
+    testRows,
+    availableMonths,
+    visibleInDashboard: availableMonths.includes("2026/06"),
   };
 }
 
@@ -2250,7 +2819,7 @@ function getAvailableDashboardMonths_() {
     Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy/MM"),
   ]);
 
-  ["Orders"].forEach((sheetName) => {
+  ["Orders", "OrdersArchive"].forEach((sheetName) => {
     const sheet = spreadsheet.getSheetByName(sheetName);
 
     if (!sheet) {
@@ -2448,7 +3017,11 @@ function getAdminDashboardData(selectedMonth) {
         monthKey === currentMonthKey ? "HH:mm" : "MM/dd HH:mm",
       ),
       customer: order.customer,
-      pickup: order.pickup,
+      pickup: formatDashboardPickupTime_(
+        order.pickup,
+        order.createdAt,
+        monthKey !== currentMonthKey,
+      ),
       status: order.status,
       total: Math.round(order.total),
       priceMissing: order.priceMissing,
@@ -2460,6 +3033,7 @@ function getAdminDashboardData(selectedMonth) {
     isCurrentMonth: monthKey === currentMonthKey,
     availableMonths: getAvailableDashboardMonths_(),
     generatedAt: Utilities.formatDate(now, timeZone, "yyyy/MM/dd HH:mm:ss"),
+    aiOrderStatus: getAiOrderStatus(),
     todayLabel:
       monthKey === currentMonthKey
         ? Utilities.formatDate(now, timeZone, "MM/dd")
@@ -2478,6 +3052,27 @@ function getAdminDashboardData(selectedMonth) {
       })),
     recentOrders,
   };
+}
+
+function formatDashboardPickupTime_(pickupTime, createdAt, includeDate) {
+  const parsed = parsePickupDateTime_(pickupTime, createdAt);
+
+  if (parsed) {
+    return Utilities.formatDate(
+      parsed,
+      "Asia/Taipei",
+      includeDate ? "MM/dd HH:mm" : "HH:mm",
+    );
+  }
+
+  const text = String(pickupTime || "").trim();
+  const timeMatch = text.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?/);
+
+  if (timeMatch) {
+    return String(Number(timeMatch[1])).padStart(2, "0") + ":" + timeMatch[2];
+  }
+
+  return text;
 }
 
 function parseOrderDate_(value) {
@@ -2602,6 +3197,91 @@ function getWebAppUrl() {
   return ScriptApp.getService().getUrl();
 }
 
+function acquireLineUserOrderLock_(lineUserId, waitMilliseconds = 30000) {
+  const key = "line-order-lock:" + String(lineUserId || "anonymous");
+  const token = Utilities.getUuid();
+  const deadline = Date.now() + waitMilliseconds;
+
+  while (Date.now() < deadline) {
+    const lock = LockService.getScriptLock();
+
+    lock.waitLock(5000);
+
+    try {
+      const properties = PropertiesService.getScriptProperties();
+      const storedValue = properties.getProperty(key);
+
+      let storedLock = null;
+
+      try {
+        storedLock = storedValue ? JSON.parse(storedValue) : null;
+      } catch (error) {
+        storedLock = null;
+      }
+
+      if (
+        !storedLock ||
+        !storedLock.token ||
+        Number(storedLock.expiresAt) <= Date.now()
+      ) {
+        properties.setProperty(
+          key,
+          JSON.stringify({
+            token,
+            expiresAt: Date.now() + 120000,
+          }),
+        );
+
+        return {
+          key,
+          token,
+        };
+      }
+    } finally {
+      lock.releaseLock();
+    }
+
+    Utilities.sleep(200);
+  }
+
+  throw new Error("同一位客戶的上一則訂單訊息仍在處理，請稍後重試");
+}
+
+function releaseLineUserOrderLock_(orderLock) {
+  if (!orderLock || !orderLock.key || !orderLock.token) {
+    return;
+  }
+
+  const lock = LockService.getScriptLock();
+  let lockAcquired = false;
+
+  try {
+    lock.waitLock(5000);
+    lockAcquired = true;
+
+    const properties = PropertiesService.getScriptProperties();
+    const storedValue = properties.getProperty(orderLock.key);
+
+    let storedLock = null;
+
+    try {
+      storedLock = storedValue ? JSON.parse(storedValue) : null;
+    } catch (error) {
+      storedLock = null;
+    }
+
+    if (storedLock && storedLock.token === orderLock.token) {
+      properties.deleteProperty(orderLock.key);
+    }
+  } catch (error) {
+    console.error("釋放客戶訂單鎖失敗:", error);
+  } finally {
+    if (lockAcquired) {
+      lock.releaseLock();
+    }
+  }
+}
+
 function doPost(e) {
   const data = JSON.parse(e.postData.contents);
 
@@ -2625,9 +3305,22 @@ function doPost(e) {
 
   const webhookEventId = String(data.webhookEventId || "");
 
-  saveCustomer(lineUserId, lineName, pictureUrl);
+  if (!isAiOrderEnabled_()) {
+    return createAssistantDisabledOutput_();
+  }
 
-  const order = parseOrder(message);
+  const lineUserOrderLock = acquireLineUserOrderLock_(lineUserId);
+
+  try {
+    if (!isAiOrderEnabled_()) {
+      return createAssistantDisabledOutput_();
+    }
+
+    saveCustomer(lineUserId, lineName, pictureUrl);
+
+  const editable = findEditableOrder(lineUserId);
+
+  const order = parseOrder(message, editable);
 
   if (!order.is_order) {
     return ContentService.createTextOutput(
@@ -2636,6 +3329,8 @@ function doPost(e) {
       }),
     ).setMimeType(ContentService.MimeType.JSON);
   }
+
+  updateEditablePickupTime_(order, editable, message);
 
   order.customer_name = order.customer_name || lineName || "";
 
@@ -2655,11 +3350,9 @@ function doPost(e) {
 
   const priceInfo = calculateOrderPrice(order);
 
-  const editable = findEditableOrder(lineUserId);
-
-  const waitMinutes = Math.max(
-    getEstimatedWaitMinutes() + (editable ? 0 : 5),
-    10,
+  const waitMinutes = getFinalEstimatedWaitMinutes_(
+    getEstimatedWaitMinutes(editable ? editable.systemOrderId : ""),
+    order,
   );
 
   const pickupInfo = ensureOrderPickupTime_(order, waitMinutes);
@@ -2690,7 +3383,15 @@ function doPost(e) {
 
       orderPersisted = true;
     } else {
-      const saveResult = saveOrder(order, message, lineUserId);
+      const saveResult = saveOrder(
+        order,
+        message,
+        lineUserId,
+        null,
+        null,
+        null,
+        true,
+      );
 
       orderPersisted = true;
 
@@ -2720,12 +3421,21 @@ function doPost(e) {
     return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(
       ContentService.MimeType.JSON,
     );
+    } catch (error) {
+      if (!orderPersisted && !error.orderPersisted) {
+        releaseWebhookEvent_(webhookEventId);
+      }
+
+      throw error;
+    }
   } catch (error) {
-    if (!orderPersisted && !error.orderPersisted) {
-      releaseWebhookEvent_(webhookEventId);
+    if (error && error.code === "AI_ORDER_DISABLED") {
+      return createAssistantDisabledOutput_();
     }
 
     throw error;
+  } finally {
+    releaseLineUserOrderLock_(lineUserOrderLock);
   }
 }
 

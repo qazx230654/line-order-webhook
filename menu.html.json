@@ -10,23 +10,52 @@
       margin:0;
       padding:16px;
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      font-size:16px;
+      font-size:18px;
       background:#f5f5f5;
     }
 
     .header{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:14px;
       margin-bottom:16px;
     }
 
+    .header-copy{
+      min-width:0;
+    }
+
     .title{
-      font-size:28px;
+      font-size:30px;
       font-weight:700;
       margin-bottom:6px;
     }
 
     .subtitle{
       color:#666;
-      font-size:17px;
+      font-size:19px;
+    }
+
+    .back-btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      flex-shrink:0;
+      min-height:52px;
+      padding:10px 16px;
+      color:#fff;
+      background:#2563a8;
+      border:0;
+      border-radius:6px;
+      font-size:19px;
+      font-weight:700;
+      text-decoration:none;
+    }
+
+    .back-btn.disabled{
+      pointer-events:none;
+      opacity:0.55;
     }
 
     .grid{
@@ -66,32 +95,32 @@
 
     .no-image{
       color:#aaa;
-      font-size:16px;
+      font-size:18px;
     }
 
     .content{
-      padding:12px;
+      padding:14px;
     }
 
     .name{
-      font-size:19px;
+      font-size:21px;
       font-weight:700;
       margin-bottom:4px;
     }
 
     .price{
       color:#555;
-      font-size:17px;
+      font-size:19px;
       margin-bottom:10px;
     }
 
     .btn{
       width:100%;
-      min-height:48px;
+      min-height:52px;
       border:0;
       border-radius:6px;
       padding:11px 8px;
-      font-size:18px;
+      font-size:20px;
       font-weight:700;
       cursor:pointer;
     }
@@ -115,7 +144,7 @@
       border:1px solid #efb4b4;
       box-shadow:0 4px 16px rgba(0,0,0,0.14);
       transform:translateX(-50%);
-      font-size:16px;
+      font-size:18px;
       font-weight:700;
     }
 
@@ -146,8 +175,11 @@
 <body>
 
   <div class="header">
-    <div class="title">菜單缺貨管理</div>
-    <div class="subtitle">點擊按鈕切換販售中 / 已售完</div>
+    <div class="header-copy">
+      <div class="title">菜單缺貨管理</div>
+      <div class="subtitle">點擊按鈕切換販售中 / 已售完</div>
+    </div>
+    <a id="backLink" class="back-btn disabled" href="#" aria-disabled="true">返回後台</a>
   </div>
 
   <div id="menuGrid" class="grid"></div>
@@ -156,6 +188,28 @@
   <script>
     let menuItems = [];
     const pendingRows = new Set();
+
+    function initializeBackLink(){
+      google.script.run
+        .withSuccessHandler(url => {
+          if(!url){
+            showNotice("無法取得後台網址");
+            return;
+          }
+
+          const link = document.getElementById("backLink");
+          link.href = url;
+          link.classList.remove("disabled");
+          link.setAttribute("aria-disabled","false");
+        })
+        .withFailureHandler(error => {
+          showNotice(
+            "無法建立返回連結：" +
+            (error && error.message ? error.message : "未知錯誤")
+          );
+        })
+        .getWebAppUrl();
+    }
 
     function loadMenu(){
 
@@ -307,6 +361,7 @@
 
     }
 
+    initializeBackLink();
     loadMenu();
   </script>
 

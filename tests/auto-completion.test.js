@@ -29,9 +29,9 @@ class OrdersSheet {
 
 const rows = [
   ['system_order_id', 'display_order_id', 'created_at', '', '', '', '', '', 'pickup_time', '', 'status', '', 'line_user_id'],
-  ['uuid-1', 'A001', '2026/07/13 17:00', '', '', '', '高麗菜', 1, '2026/07/13 18:00', '', '待製作', '', 'U123'],
+  ['uuid-1', 'A001', '2026/07/13 17:00', '', '', '', '高麗菜', 0.5, '2026/07/13 18:00', '', '待製作', '', 'U123'],
   ['uuid-1', 'A001', '2026/07/13 17:00', '', '', '', '豆干', 1, '2026/07/13 18:00', '', '待製作', '', 'U123'],
-  ['uuid-2', 'A001', '2026/07/13 17:30', '', '', '', '雞心', 1, '2026/07/13 19:00', '', '待製作', '', 'U456'],
+  ['uuid-2', 'A001', '2026/07/13 17:30', '', '', '', '雞心', 2, '2026/07/13 19:00', '', '待製作', '', 'U456'],
 ];
 
 const ordersSheet = new OrdersSheet(rows);
@@ -131,6 +131,7 @@ const estimatedPickup = context.ensureOrderPickupTime_(
 );
 
 assert.equal(estimatedOrder.pickup_time, '2026/07/13 18:10');
+assert.equal(estimatedOrder.pickup_time_source, 'estimated');
 assert.equal(estimatedPickup.displayTime, '18:10');
 assert.equal(estimatedPickup.estimated, true);
 
@@ -142,6 +143,7 @@ const requestedPickup = context.ensureOrderPickupTime_(
 );
 
 assert.equal(requestedOrder.pickup_time, '2026/07/13 19:00');
+assert.equal(requestedOrder.pickup_time_source, 'requested');
 assert.equal(requestedPickup.displayTime, '19:00');
 assert.equal(requestedPickup.estimated, false);
 
@@ -162,14 +164,39 @@ assert.deepEqual(
   ['uuid-1'],
 );
 
-assert.equal(context.getEstimatedWaitMinutes(), 10);
+assert.equal(context.getEstimatedWaitMinutes(), 2);
+assert.equal(context.getEstimatedWaitMinutes('uuid-1'), 1);
+assert.equal(context.getOrderPreparationMinutes_({
+  groups: [{
+    items: [
+      { quantity: 0.5 },
+      { quantity: 2 },
+      { quantity: 1.5 },
+      { quantity: 20 },
+    ],
+  }],
+}), 3);
+assert.equal(context.getFinalEstimatedWaitMinutes_(0, {
+  groups: [{
+    items: [
+      { quantity: 0.5 },
+      { quantity: 2 },
+    ],
+  }],
+}), 10);
+assert.equal(context.getFinalEstimatedWaitMinutes_(12, {
+  groups: [{ items: [{ quantity: 2 }] }],
+}), 15);
+assert.equal(context.getFinalEstimatedWaitMinutes_(10, {
+  groups: [{ items: [{ quantity: 2 }] }],
+}), 13);
 
 const firstUpdate = context.updateOrderStatus('uuid-1');
 const secondUpdate = context.updateOrderStatus('uuid-1');
 
-assert.equal(firstUpdate.notified, true);
+assert.equal(firstUpdate.notified, false);
 assert.equal(secondUpdate.alreadyCompleted, true);
-assert.equal(notificationCount, 1);
+assert.equal(notificationCount, 0);
 assert.equal(ordersSheet.values[1][10], '已完成');
 assert.equal(ordersSheet.values[2][10], '已完成');
 assert.equal(ordersSheet.values[3][10], '待製作');

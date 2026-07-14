@@ -27,9 +27,10 @@ same `system_order_id` and `display_order_id`.
 | I | 8 | `pickup_time` | Customer-requested pickup time, or the system estimate when omitted; new values use `yyyy/MM/dd HH:mm` |
 | J | 9 | `note` | Order or item note |
 | K | 10 | `status` | Order status, for example `待製作` |
-| L | 11 | `raw_message` | Original LINE message |
+| L | 11 | `raw_message` | Original LINE message history for the current editable order, separated by blank lines |
 | M | 12 | `line_user_id` | LINE user ID |
 | N | 13 | `unit_price` | Transaction-time unit price; missing prices use `UNPRICED` |
+| O | 14 | `pickup_time_source` | `requested` when the customer specified the time, or `estimated` when calculated by the system |
 
 ## PriceList
 
@@ -98,7 +99,9 @@ that cannot be matched safely. Repeated normalized names update the same row.
 ## OrdersArchive
 
 Created by `initializeOrderArchiveSheets`. Columns A:N are an immutable copy of
-the corresponding `Orders` row at archive time. Legacy rows without a stored
+the corresponding order detail at archive time. The operational
+`pickup_time_source` column is not needed after completion and is not archived.
+Legacy rows without a stored
 unit price are resolved once during archiving and saved as a fixed price or
 `UNPRICED`, so historical revenue cannot change with future menu prices.
 
