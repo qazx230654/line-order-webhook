@@ -4,7 +4,7 @@
 
 ## 測試前準備
 
-- 先備份 `Orders`、`Customers`、`PriceList` 工作表。
+- 先備份 `Orders`、`Customers`、`PriceList`、`ItemAlias`、`UnmatchedItems` 工作表（若存在）。
 - 確認 Cloud Run 已設定 `GAS_URL`、`GAS_SHARED_SECRET`、`CLOUD_RUN_NOTIFY_SECRET`、`LINE_CHANNEL_ACCESS_TOKEN`、`LINE_CHANNEL_SECRET`。
 - 確認 Apps Script 已設定 `WEBHOOK_SHARED_SECRET`、`CLOUD_RUN_NOTIFY_SECRET`、`OPENAI_API_KEY`。
 - 測試修改功能時，請在建立原訂單後 20 分鐘內執行。
@@ -33,7 +33,12 @@
 | B05 | 分袋訂單 | `第一袋：高麗菜一份，微辣\n第二袋：雞胸肉一份，不辣，不酸菜` | 顯示兩個分組及各自備註 | group_name、note 分開保存 |  | NOT RUN |  |
 | B06 | 商品別名 | 使用 `ItemAlias` 內的一個別名，例如：`杏包菇一份` | 回覆正規商品名稱 | Orders 商品名稱為別名對應的正式名稱 |  | NOT RUN | 依實際 ItemAlias 調整輸入 |
 | B07 | 直接金額格式 | `百頁豆腐20` | 顯示品項且金額計算為 20 元 | quantity 與 `unit_price` 符合直接金額規則 |  | NOT RUN |  |
-| B08 | 無取餐時間 | `高麗菜一份` | 訂單仍成立並顯示系統預估時間 | pickup_time 可為空；estimatedPickupTime 正常 |  | NOT RUN |  |
+| B08 | 無指定取餐時間 | `高麗菜一份` | 訂單成立並顯示系統預估時間 | I 欄 pickup_time 寫入 `yyyy/MM/dd HH:mm` 預估值，不可空白 |  | NOT RUN |  |
+| B09 | 空格與全半形正規化 | 將正式名稱加入不規則空格或使用全形字元 | 回覆 `PriceList` 內的正式名稱 | Orders 保存正式名稱 |  | NOT RUN |  |
+| B10 | 常見字形正規化 | 正式名稱為「大豆干」時輸入 `大豆乾一份` | 回覆正式名稱「大豆干」 | 不新增 UnmatchedItems |  | NOT RUN |  |
+| B11 | AI 限定菜單對應 | 輸入未登記於 ItemAlias、但可明確對應菜單的俗稱 | AI 只能回覆 PriceList 內的正式名稱 | Orders 保存正式名稱；價格可正常計算 |  | NOT RUN |  |
+| B12 | 未知商品保守處理 | `神秘丸一份`（確認菜單及別名均不存在） | 訂單不中斷並顯示未設定價格，不可擅自換成其他品項 | Orders 保存原名稱且 N 欄為 `UNPRICED`；UnmatchedItems 新增 pending 記錄 |  | NOT RUN |  |
+| B13 | 核准未知名稱 | 將 B12 的 suggested_name 改成有效正式名稱並將 status 設為 `approved`，再送相同內容 | 回覆核准後的正式名稱 | 不再新增未知記錄；Orders 使用正式名稱及其價格 |  | NOT RUN |  |
 
 ## C. 價格與缺貨
 
@@ -67,11 +72,39 @@
 | E05 | 今日統計 | 完成數張測試訂單後開啟 Dashboard | 今日訂單、營收、待製作、完成率正確 | 訂單依 UUID 去重，不依商品列重複計數 |  | NOT RUN |  |
 | E06 | 本月統計 | 確認本月多日訂單資料 | 趨勢圖及本月營收正確 | 未定價品項不計入營收 |  | NOT RUN |  |
 
+## F. 取餐時間自動完成
+
+| ID | 測試項目 | 前置設定／輸入 | 預期結果 | Sheet／通知檢查 | 實際結果 | 狀態 |
+|---|---|---|---|---|---|---|
+| F01 | 排程已安裝 | 在 Apps Script 執行一次 `installAutoCompletionTrigger()` | 回傳 `enabled: true` | `getAutoCompletionTriggerStatus()` 顯示每 5 分鐘執行 |  | NOT RUN |
+| F02 | 未到取餐時間 | 建立取餐時間為 30 分鐘後的待製作訂單，執行 `autoCompleteOrdersByPickupTime()` | 訂單維持待製作 | 不發 LINE 完成通知 |  | NOT RUN |
+| F03 | 到時自動完成 | 建立取餐時間已到、但不超過 12 小時的待製作訂單，執行排程函式 | 同 UUID 的所有列更新為已完成 | 有 LINE ID 時只發一次完成通知 |  | NOT RUN |
+| F04 | 舊資料沒有取餐時間 | 準備 pickup_time 空白的舊待製作訂單 | 排程安全跳過 | 狀態維持待製作；新訂單不應再產生此狀況 |  | NOT RUN |
+| F05 | 無效取餐時間 | 將 pickup_time 設為無法辨識的文字 | 排程安全跳過且不中斷其他訂單 | 狀態維持待製作 |  | NOT RUN |
+| F06 | 重複執行 | 對已由 F03 完成的訂單再次執行排程 | 回傳時不重複更新 | 不重複發 LINE 通知 |  | NOT RUN |
+| F07 | 明天取餐 | 輸入 `明天晚上6點取餐` | pickup_time 保存為明天的完整日期時間 | 今天不完成；明天時間到才完成 |  | NOT RUN |
+| F08 | 過舊訂單保護 | 準備已超過取餐時間 12 小時的待製作舊訂單 | 排程跳過，避免首次啟用時大量通知舊客人 | 狀態不變、不發通知 |  | NOT RUN |
+
+## G. 月份封存與歷史後台
+
+| ID | 測試項目 | 操作／前置資料 | 預期結果 | Sheet／Dashboard 檢查 | 實際結果 | 狀態 |
+|---|---|---|---|---|---|---|
+| G01 | 建立封存表 | 執行 `initializeOrderArchiveSheets()` | 函式成功完成 | 建立 OrdersArchive、MonthlySummary、MonthlyItemSummary 及正確表頭 |  | NOT RUN |
+| G02 | 封存預覽 | 執行 `previewMonthlyArchive("上一月份")` | 只回傳預覽資料，不移動訂單 | Orders 列數不變；筆數、列數與營收可核對 |  | NOT RUN |
+| G03 | 已完成整單封存 | 準備一張包含多個商品列的上月已完成訂單後執行封存 | 同 UUID 所有列一起封存 | Archive 完整保存 A:N 及 archived_at；Orders 不再有該 UUID |  | NOT RUN |
+| G04 | 待製作保護 | 準備上月待製作訂單並執行封存 | 該訂單不封存 | Orders 保留完整訂單；Archive 無該 UUID |  | NOT RUN |
+| G05 | 防止重複封存 | 對同月份連續執行兩次 `archiveMonthlyOrders()` | 第二次不新增重複列 | Archive 每個來源列只有一份；月統計不加倍 |  | NOT RUN |
+| G06 | 未定價封存 | 準備含 `UNPRICED` 的已完成訂單 | 訂單仍可封存 | 明細保留；MonthlySummary 未定價訂單數增加且該品項營收為 0 |  | NOT RUN |
+| G07 | 月商品統計 | 封存包含多品項的月份 | MonthlyItemSummary 依月份及商品彙總 | 數量與營收等於封存明細 |  | NOT RUN |
+| G08 | Dashboard 月份選單 | 開啟後台並切換至已封存月份 | 畫面載入該月資料 | 營收、平均客單、訂單數、完成數、趨勢與熱銷品項正確 |  | NOT RUN |
+| G09 | 雙來源去重 | 模擬同 UUID 暫時同時存在 Orders 與 OrdersArchive | Dashboard 只計算一次 | 訂單數與營收不重複 |  | NOT RUN |
+| G10 | 每日補封存排程 | 執行 `installOrderArchiveTrigger()`，再將舊待製作單改成已完成 | 下一次排程封存該訂單 | Trigger 每日 03:00 左右執行，舊月份資料最終移出 Orders |  | NOT RUN |
+
 ## 測試結果摘要
 
 | 指標 | 數量 |
 |---|---:|
-| 測試案例總數 | 30 |
+| 測試案例總數 | 53 |
 | PASS |  |
 | FAIL |  |
 | BLOCKED |  |

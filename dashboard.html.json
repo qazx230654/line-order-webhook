@@ -33,6 +33,7 @@
       color:var(--text);
       background:var(--bg);
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+      font-size:16px;
       letter-spacing:0;
     }
 
@@ -61,14 +62,14 @@
 
     .brand h1{
       margin:0;
-      font-size:20px;
+      font-size:23px;
       line-height:1.3;
     }
 
     .brand p{
       margin:3px 0 0;
       color:var(--muted);
-      font-size:13px;
+      font-size:15px;
     }
 
     .actions{
@@ -79,8 +80,8 @@
     }
 
     .btn{
-      min-height:40px;
-      padding:8px 14px;
+      min-height:44px;
+      padding:9px 15px;
       border:1px solid var(--border);
       border-radius:6px;
       color:var(--text);
@@ -127,12 +128,37 @@
 
     .section-heading h2{
       margin:0;
-      font-size:17px;
+      font-size:20px;
     }
 
     .section-heading span{
       color:var(--muted);
-      font-size:13px;
+      font-size:15px;
+    }
+
+    .period-control{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .period-control label{
+      color:var(--muted);
+      font-size:15px;
+      font-weight:650;
+    }
+
+    .period-select{
+      min-width:132px;
+      min-height:44px;
+      padding:8px 34px 8px 12px;
+      color:var(--text);
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:6px;
+      font:inherit;
+      font-size:16px;
+      font-weight:700;
     }
 
     .metric-grid{
@@ -154,22 +180,23 @@
 
     .metric-label{
       color:var(--muted);
-      font-size:13px;
+      font-size:17px;
       font-weight:650;
     }
 
     .metric-value{
       margin-top:12px;
-      font-size:30px;
+      font-size:34px;
       line-height:1.1;
       font-weight:760;
+      font-variant-numeric:tabular-nums;
       overflow-wrap:anywhere;
     }
 
     .metric-note{
       margin-top:9px;
       color:var(--muted);
-      font-size:13px;
+      font-size:15px;
     }
 
     .metric.green{
@@ -215,12 +242,12 @@
 
     .panel-header h2{
       margin:0;
-      font-size:16px;
+      font-size:19px;
     }
 
     .panel-header span{
       color:var(--muted);
-      font-size:12px;
+      font-size:14px;
     }
 
     .chart{
@@ -243,7 +270,7 @@
     .status-chip{
       padding:10px 12px;
       border-radius:6px;
-      font-size:13px;
+      font-size:16px;
       font-weight:700;
     }
 
@@ -272,8 +299,8 @@
       grid-template-columns:30px minmax(80px,1fr) minmax(100px,1.4fr) auto;
       align-items:center;
       gap:10px;
-      min-height:42px;
-      font-size:14px;
+      min-height:48px;
+      font-size:16px;
     }
 
     .rank-number{
@@ -315,12 +342,12 @@
     table{
       width:100%;
       border-collapse:collapse;
-      font-size:14px;
+      font-size:16px;
     }
 
     th,
     td{
-      padding:12px 14px;
+      padding:14px 16px;
       border-bottom:1px solid var(--border);
       text-align:left;
       white-space:nowrap;
@@ -329,7 +356,7 @@
     th{
       color:var(--muted);
       background:#fafbfc;
-      font-size:12px;
+      font-size:14px;
       font-weight:700;
     }
 
@@ -345,11 +372,11 @@
 
     .badge{
       display:inline-block;
-      min-width:58px;
-      padding:4px 8px;
+      min-width:68px;
+      padding:6px 10px;
       border-radius:4px;
       text-align:center;
-      font-size:12px;
+      font-size:14px;
       font-weight:700;
     }
 
@@ -365,7 +392,7 @@
 
     .price-warning{
       color:var(--red);
-      font-size:12px;
+      font-size:14px;
       font-weight:700;
     }
 
@@ -376,6 +403,7 @@
       min-height:150px;
       padding:24px;
       color:var(--muted);
+      font-size:16px;
       text-align:center;
     }
 
@@ -399,6 +427,7 @@
       border:1px solid var(--border);
       border-radius:8px;
       box-shadow:0 8px 24px rgba(23,32,51,0.16);
+      font-size:16px;
       font-weight:700;
     }
 
@@ -410,6 +439,7 @@
       background:var(--red-soft);
       border:1px solid #efbcbc;
       border-radius:6px;
+      font-size:16px;
     }
 
     @media (max-width:980px){
@@ -439,9 +469,9 @@
       }
 
       .btn{
-        min-height:38px;
-        padding:7px 10px;
-        font-size:13px;
+        min-height:44px;
+        padding:8px 11px;
+        font-size:15px;
       }
 
       main{
@@ -453,12 +483,33 @@
       }
 
       .metric{
-        min-height:112px;
+        min-height:124px;
         padding:14px;
       }
 
       .metric-value{
-        font-size:24px;
+        font-size:28px;
+      }
+
+      .metric-label{
+        font-size:16px;
+      }
+
+      .metric-note{
+        font-size:14px;
+      }
+
+      .section-heading{
+        align-items:center;
+      }
+
+      .period-control label{
+        display:none;
+      }
+
+      .period-select{
+        min-width:124px;
+        font-size:15px;
       }
 
       .chart{
@@ -493,36 +544,41 @@
     <div id="errorBanner" class="error-banner" role="alert"></div>
 
     <div class="section-heading">
-      <h2>今日營運</h2>
-      <span id="todayLabel"></span>
+      <h2>營運概況</h2>
+      <div class="period-control">
+        <label for="monthSelect">檢視月份</label>
+        <select id="monthSelect" class="period-select" onchange="loadDashboard(true)">
+          <option value="">本月</option>
+        </select>
+      </div>
     </div>
-    <section class="metric-grid" aria-label="今日營運指標">
+    <section class="metric-grid" aria-label="營運指標">
       <article class="metric green">
-        <div class="metric-label">今日營收</div>
+        <div id="todayRevenueLabel" class="metric-label">今日營收</div>
         <div id="todayRevenue" class="metric-value">$0</div>
         <div id="todayAverage" class="metric-note">平均客單 $0</div>
       </article>
+      <article class="metric red">
+        <div id="monthRevenueLabel" class="metric-label">本月營收</div>
+        <div id="monthRevenue" class="metric-value">$0</div>
+        <div id="monthAverage" class="metric-note">平均客單 $0</div>
+      </article>
       <article class="metric blue">
-        <div class="metric-label">今日訂單</div>
+        <div id="todayOrdersLabel" class="metric-label">今日訂單</div>
         <div id="todayOrders" class="metric-value">0</div>
         <div id="todayCompletion" class="metric-note">完成率 0%</div>
       </article>
       <article class="metric amber">
-        <div class="metric-label">待製作</div>
-        <div id="pendingOrders" class="metric-value">0</div>
-        <div class="metric-note">目前尚未完成</div>
-      </article>
-      <article class="metric red">
-        <div class="metric-label">本月營收</div>
-        <div id="monthRevenue" class="metric-value">$0</div>
-        <div id="monthOrders" class="metric-note">本月 0 筆訂單</div>
+        <div id="monthOrdersLabel" class="metric-label">本月訂單</div>
+        <div id="monthOrders" class="metric-value">0</div>
+        <div id="monthOrderNote" class="metric-note">本月累計</div>
       </article>
     </section>
 
     <section class="dashboard-grid">
       <article class="panel">
         <div class="panel-header">
-          <h2>本月營收與訂單趨勢</h2>
+          <h2 id="trendTitle">本月營收與訂單趨勢</h2>
           <span id="monthLabel"></span>
         </div>
         <div id="trendChart" class="chart" aria-label="本月營收與訂單趨勢圖"></div>
@@ -530,7 +586,7 @@
 
       <article class="panel">
         <div class="panel-header">
-          <h2>今日訂單狀態</h2>
+          <h2 id="statusTitle">今日訂單狀態</h2>
           <span>即時概況</span>
         </div>
         <div id="statusChart" class="chart status-chart" aria-label="今日訂單狀態圖"></div>
@@ -544,7 +600,7 @@
     <section class="lower-grid">
       <article class="panel">
         <div class="panel-header">
-          <h2>本月熱銷品項</h2>
+          <h2 id="rankingTitle">本月熱銷品項</h2>
           <span>依銷售數量</span>
         </div>
         <div id="ranking" class="ranking"></div>
@@ -552,7 +608,7 @@
 
       <article class="panel">
         <div class="panel-header">
-          <h2>今日最近訂單</h2>
+          <h2 id="recentTitle">今日最近訂單</h2>
           <span>最近 10 筆</span>
         </div>
         <div class="table-wrap">
@@ -628,6 +684,10 @@
       document.getElementById("errorBanner")
         .style.display = "none";
 
+      const selectedMonth =
+        document.getElementById("monthSelect")
+          .value;
+
       google.script.run
         .withSuccessHandler(function(data){
           latestData = data;
@@ -638,7 +698,9 @@
           setLoading(false);
           showError(error && error.message ? error.message : "未知錯誤");
         })
-        .getAdminDashboardData();
+        .getAdminDashboardData(
+          selectedMonth
+        );
     }
 
     function initializeMenuLink(){
@@ -667,25 +729,39 @@
     function renderDashboard(data){
       document.getElementById("updatedAt").textContent =
         "資料更新時間 " + data.generatedAt;
-      document.getElementById("todayLabel").textContent = data.todayLabel;
+
+      renderMonthOptions(data);
+
       document.getElementById("monthLabel").textContent = data.monthLabel;
-      document.getElementById("todayRevenue").textContent =
-        formatCurrency(data.today.revenue);
-      document.getElementById("todayAverage").textContent =
-        "平均客單 " + formatCurrency(data.today.average);
-      document.getElementById("todayOrders").textContent = data.today.orders;
-      document.getElementById("todayCompletion").textContent =
-        "完成率 " + data.today.completionRate + "%";
-      document.getElementById("pendingOrders").textContent = data.today.pending;
-      document.getElementById("monthRevenue").textContent =
-        formatCurrency(data.month.revenue);
-      document.getElementById("monthOrders").textContent =
-        "本月 " + data.month.orders + " 筆訂單，平均 " +
-        formatCurrency(data.month.average);
+
+      if(data.isCurrentMonth){
+        renderCurrentMetrics(data);
+      }else{
+        renderHistoricalMetrics(data);
+      }
+
+      const statusPeriod =
+        data.isCurrentMonth
+          ? data.today
+          : data.month;
+
       document.getElementById("pendingSummary").textContent =
-        "待製作 " + data.today.pending;
+        "待製作 " + statusPeriod.pending;
       document.getElementById("completedSummary").textContent =
-        "已完成 " + data.today.completed;
+        "已完成 " + statusPeriod.completed;
+
+      document.getElementById("trendTitle").textContent =
+        data.monthLabel + " 營收與訂單趨勢";
+      document.getElementById("statusTitle").textContent =
+        data.isCurrentMonth
+          ? "今日訂單狀態"
+          : data.monthLabel + " 訂單狀態";
+      document.getElementById("rankingTitle").textContent =
+        data.monthLabel + " 熱銷品項";
+      document.getElementById("recentTitle").textContent =
+        data.isCurrentMonth
+          ? "今日最近訂單"
+          : data.monthLabel + " 最近訂單";
 
       renderRanking(data.topItems);
       renderRecentOrders(data.recentOrders);
@@ -695,11 +771,78 @@
       }
     }
 
+    function renderMonthOptions(data){
+      const select =
+        document.getElementById("monthSelect");
+
+      const months =
+        Array.isArray(data.availableMonths)
+          ? data.availableMonths
+          : [data.selectedMonth];
+
+      select.innerHTML = "";
+
+      months.forEach(function(month){
+        const option = document.createElement("option");
+        option.value = month;
+        option.textContent =
+          month +
+          (month === data.currentMonth
+            ? "（本月）"
+            : "");
+        option.selected =
+          month === data.selectedMonth;
+        select.appendChild(option);
+      });
+    }
+
+    function renderCurrentMetrics(data){
+      document.getElementById("todayRevenueLabel").textContent = "今日營收";
+      document.getElementById("monthRevenueLabel").textContent = "本月營收";
+      document.getElementById("todayOrdersLabel").textContent = "今日訂單";
+      document.getElementById("monthOrdersLabel").textContent = "本月訂單";
+      document.getElementById("todayRevenue").textContent =
+        formatCurrency(data.today.revenue);
+      document.getElementById("todayAverage").textContent =
+        "平均客單 " + formatCurrency(data.today.average);
+      document.getElementById("monthRevenue").textContent =
+        formatCurrency(data.month.revenue);
+      document.getElementById("monthAverage").textContent =
+        "平均客單 " + formatCurrency(data.month.average);
+      document.getElementById("todayOrders").textContent = data.today.orders;
+      document.getElementById("todayCompletion").textContent =
+        "完成率 " + data.today.completionRate + "%";
+      document.getElementById("monthOrders").textContent = data.month.orders;
+      document.getElementById("monthOrderNote").textContent =
+        "本月累計 " + data.month.orders + " 筆";
+    }
+
+    function renderHistoricalMetrics(data){
+      document.getElementById("todayRevenueLabel").textContent =
+        data.monthLabel + " 營收";
+      document.getElementById("monthRevenueLabel").textContent = "平均客單";
+      document.getElementById("todayOrdersLabel").textContent =
+        data.monthLabel + " 訂單";
+      document.getElementById("monthOrdersLabel").textContent = "已完成訂單";
+      document.getElementById("todayRevenue").textContent =
+        formatCurrency(data.month.revenue);
+      document.getElementById("todayAverage").textContent = "該月總營收";
+      document.getElementById("monthRevenue").textContent =
+        formatCurrency(data.month.average);
+      document.getElementById("monthAverage").textContent = "每筆訂單平均";
+      document.getElementById("todayOrders").textContent = data.month.orders;
+      document.getElementById("todayCompletion").textContent =
+        "完成率 " + data.month.completionRate + "%";
+      document.getElementById("monthOrders").textContent = data.month.completed;
+      document.getElementById("monthOrderNote").textContent =
+        "待製作 " + data.month.pending + " 筆";
+    }
+
     function renderRanking(items){
       const container = document.getElementById("ranking");
 
       if(!items.length){
-        container.innerHTML = '<div class="empty">本月尚無銷售資料</div>';
+        container.innerHTML = '<div class="empty">此月份尚無銷售資料</div>';
         return;
       }
 
@@ -722,7 +865,7 @@
       const tbody = document.getElementById("recentOrders");
 
       if(!orders.length){
-        tbody.innerHTML = '<tr><td colspan="6"><div class="empty">今日尚無訂單</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6"><div class="empty">此期間尚無訂單</div></td></tr>';
         return;
       }
 
@@ -747,7 +890,11 @@
 
     function drawCharts(data){
       drawTrendChart(data.daily);
-      drawStatusChart(data.today);
+      drawStatusChart(
+        data.isCurrentMonth
+          ? data.today
+          : data.month
+      );
     }
 
     function drawTrendChart(daily){
@@ -765,11 +912,11 @@
         chartArea:{left:66,top:28,width:"78%",height:"68%"},
         colors:["#16805b","#2563a8"],
         fontName:"Arial",
-        legend:{position:"top",alignment:"end",textStyle:{color:"#657084",fontSize:12}},
-        hAxis:{textStyle:{color:"#657084",fontSize:11},gridlines:{color:"transparent"}},
+        legend:{position:"top",alignment:"end",textStyle:{color:"#657084",fontSize:14}},
+        hAxis:{textStyle:{color:"#657084",fontSize:13},gridlines:{color:"transparent"}},
         vAxes:{
-          0:{format:"$#,###",textStyle:{color:"#657084",fontSize:11},gridlines:{color:"#e7e9ed"},minValue:0},
-          1:{format:"0",textStyle:{color:"#657084",fontSize:11},gridlines:{color:"transparent"},minValue:0}
+          0:{format:"$#,###",textStyle:{color:"#657084",fontSize:13},gridlines:{color:"#e7e9ed"},minValue:0},
+          1:{format:"0",textStyle:{color:"#657084",fontSize:13},gridlines:{color:"transparent"},minValue:0}
         },
         seriesType:"bars",
         series:{
@@ -777,7 +924,7 @@
           1:{type:"line",targetAxisIndex:1,lineWidth:3,pointSize:4}
         },
         bar:{groupWidth:"58%"},
-        tooltip:{textStyle:{fontSize:13}}
+        tooltip:{textStyle:{fontSize:15}}
       });
     }
 
@@ -802,9 +949,9 @@
         colors:["#d8892d","#16805b"],
         pieHole:0.62,
         pieSliceText:"value",
-        pieSliceTextStyle:{color:"#ffffff",fontSize:13},
+        pieSliceTextStyle:{color:"#ffffff",fontSize:15},
         legend:{position:"none"},
-        tooltip:{textStyle:{fontSize:13}}
+        tooltip:{textStyle:{fontSize:15}}
       });
     }
 
